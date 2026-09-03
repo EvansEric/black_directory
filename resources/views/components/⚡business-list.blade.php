@@ -21,6 +21,8 @@ new class extends Component
         'Retail & Fashion',
         'Health & Wellness',
         'Arts & Creative',
+        'Automotive & Transport'
+
     ];
 
     #[Computed]

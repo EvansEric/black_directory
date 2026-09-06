@@ -189,9 +189,9 @@ new class extends Component
                     class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
                 >
                     <div class="relative h-48 overflow-hidden bg-slate-100">
-                        <img src="{{ $business->image ?: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80' }}"
+                        <img src="{{ $business->image ? asset('storage/' . $business->image) : 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80' }}"
                             alt="{{ $business->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
+                        <div class="absolute inset-0 bg-linear-to-t from-slate-900/60 via-transparent to-transparent"></div>
 
                         <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
                             <span class="bg-slate-900/80 backdrop-blur-md text-amber-400 text-[11px] font-semibold px-2.5 py-1 rounded-lg">{{ $business->category }}</span>
@@ -236,7 +236,7 @@ new class extends Component
                         </div>
                     </div>
 
-                    <div class="p-5 flex-grow flex flex-col justify-between">
+                    <div class="p-5 grow flex flex-col justify-between">
                         <div>
                             <div class="flex justify-between items-start mb-2">
                                 <h3 class="font-bold text-slate-900 text-lg group-hover:text-amber-600 transition-colors line-clamp-1">{{ $business->name }}</h3>

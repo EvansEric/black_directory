@@ -227,7 +227,7 @@ new class extends Component
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Business Image</label>
                 <input type="file" wire:model="image" accept="image/*"
-                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 focus:outline-none">
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm file:mr-4 file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 focus:outline-none">
                 <div wire:loading wire:target="image" class="text-xs text-amber-600 mt-1">Uploading preview...</div>
                 @if ($editingBusinessId)
                     <p class="text-xs text-slate-500 mt-1">Choose a new image only to replace the current one.</p>

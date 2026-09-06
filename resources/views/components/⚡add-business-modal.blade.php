@@ -2,6 +2,8 @@
 
 use App\Models\Business;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -18,6 +20,7 @@ new class extends Component
     public string $website = '';
     public $image;
     public string $description = '';
+    public ?int $editingBusinessId = null;
 
     protected function rules(): array
     {
@@ -44,33 +47,93 @@ new class extends Component
 
         $data = $this->validate();
 
-        $imagePath = null;
-        if ($this->image) {
-            $imagePath = $this->image->store('businesses', 'public');
+        if ($this->editingBusinessId) {
+            $business = Business::query()->findOrFail($this->editingBusinessId);
+
+            if (Auth::id() !== $business->user_id) {
+                abort(403, 'You are not authorized to edit this business.');
+            }
+
+            unset($data['image']);
+
+            if ($this->image) {
+                $imagePath = $this->image->store('businesses', 'public');
+                $previousImage = $business->image;
+                $data['image'] = $imagePath;
+            }
+
+            $business->update($data);
+
+            if (isset($previousImage) && $previousImage && ! str_starts_with($previousImage, 'http')) {
+                Storage::disk('public')->delete($previousImage);
+            }
+        } else {
+            $imagePath = null;
+            if ($this->image) {
+                $imagePath = $this->image->store('businesses', 'public');
+            }
+
+            Business::create([
+                ...$data,
+                'image' => $imagePath,
+                'user_id' => Auth::id(),
+                'rating' => 5.0,
+                'reviews_count' => 0,
+                'featured' => true,
+                'tags' => ['New Listing', 'Local'],
+            ]);
         }
 
-        Business::create([
-            ...$data,
-            'image' => $imagePath,
-            'user_id' => Auth::id(),
-            'rating' => 5.0,
-            'reviews_count' => 0,
-            'featured' => true,
-            'tags' => ['New Listing', 'Local'],
-        ]);
-
-        $this->reset(['name', 'location', 'address', 'zip', 'phone', 'website', 'image', 'description']);
-        $this->category = 'Dining & Food';
-
+        $this->resetForm();
         $this->dispatch('business-updated');
-        $this->dispatch('business-added');
+        $this->dispatch('business-saved');
+    }
+
+    #[On('open-add-modal')]
+    public function startCreate(): void
+    {
+        $this->resetForm();
+    }
+
+    #[On('edit-business')]
+    public function editBusiness(int $businessId): void
+    {
+        if (! Auth::check()) {
+            abort(403, 'You must be signed in to edit a business.');
+        }
+
+        $business = Business::query()->findOrFail($businessId);
+
+        if (Auth::id() !== $business->user_id) {
+            abort(403, 'You are not authorized to edit this business.');
+        }
+
+        $this->editingBusinessId = $business->id;
+        $this->name = $business->name;
+        $this->category = $business->category;
+        $this->location = $business->location;
+        $this->address = $business->address ?? '';
+        $this->zip = $business->zip ?? '';
+        $this->phone = $business->phone ?? '';
+        $this->website = $business->website ?? '';
+        $this->image = null;
+        $this->description = $business->description;
+        $this->resetValidation();
+    }
+
+    private function resetForm(): void
+    {
+        $this->reset(['name', 'location', 'address', 'zip', 'phone', 'website', 'image', 'description', 'editingBusinessId']);
+        $this->category = 'Dining & Food';
+        $this->resetValidation();
     }
 }; ?>
 
 <div
     x-data="{ open: false }"
     x-on:open-add-modal.window="open = true"
-    x-on:business-added.window="open = false"
+    x-on:edit-business.window="open = true"
+    x-on:business-saved.window="open = false"
     x-show="open"
     x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0"
@@ -88,8 +151,8 @@ new class extends Component
         </button>
 
         <div class="mb-6">
-            <h3 class="font-serif text-2xl font-bold text-slate-900">List Your Business</h3>
-            <p class="text-slate-500 text-xs mt-1">Join the directory and connect with customers in your neighborhood.</p>
+            <h3 class="font-serif text-2xl font-bold text-slate-900">{{ $editingBusinessId ? 'Edit Your Business' : 'List Your Business' }}</h3>
+            <p class="text-slate-500 text-xs mt-1">{{ $editingBusinessId ? 'Keep your listing details current for customers.' : 'Join the directory and connect with customers in your neighborhood.' }}</p>
         </div>
 
         <form wire:submit="save" class="space-y-4">
@@ -166,6 +229,9 @@ new class extends Component
                 <input type="file" wire:model="image" accept="image/*"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 focus:outline-none">
                 <div wire:loading wire:target="image" class="text-xs text-amber-600 mt-1">Uploading preview...</div>
+                @if ($editingBusinessId)
+                    <p class="text-xs text-slate-500 mt-1">Choose a new image only to replace the current one.</p>
+                @endif
                 @error('image') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -181,8 +247,8 @@ new class extends Component
                         class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-amber-900/20"
                         wire:loading.attr="disabled" wire:target="save, image"
                 >
-                    <span wire:loading.remove wire:target="save, image">Submit Listing</span>
-                    <span wire:loading wire:target="save, image">Submitting...</span>
+                    <span wire:loading.remove wire:target="save, image">{{ $editingBusinessId ? 'Save Changes' : 'Submit Listing' }}</span>
+                    <span wire:loading wire:target="save, image">{{ $editingBusinessId ? 'Saving...' : 'Submitting...' }}</span>
                 </button>
             </div>
         </form>

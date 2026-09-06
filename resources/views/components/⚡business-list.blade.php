@@ -21,7 +21,19 @@ new class extends Component
         'Retail & Fashion',
         'Health & Wellness',
         'Arts & Creative',
-        'Automotive & Transport'
+        'Automotive & Transport',
+        'Home & Trades',
+        'Real Estate & Property',
+        'Pet Care & Services',
+        'Cleaning & Maintenance',
+        'IT & Tech Solutions',
+        'Legal & Financial',
+        'Marketing & Media',
+        'Education & Instruction',
+        'Travel & Lodging',
+        'Sports & Recreation',
+        'Entertainment & Events',
+        'Non-Profit & Community',
 
     ];
 
@@ -74,6 +86,17 @@ new class extends Component
         unset($this->businesses);
     }
 
+    public function editBusiness(int $id): void
+    {
+        $business = Business::query()->findOrFail($id);
+
+        if (! Auth::check() || Auth::id() !== $business->user_id) {
+            abort(403, 'You are not authorized to edit this business.');
+        }
+
+        $this->dispatch('edit-business', businessId: $business->id);
+    }
+
     public function deleteBusiness(int $id): void
     {
         $business = Business::query()->findOrFail($id);
@@ -102,7 +125,7 @@ new class extends Component
                 class="w-full pl-11 pr-4 py-3 bg-slate-50 md:bg-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50">
         </div>
         <div class="md:col-span-3">
-            <div class="w-full h-full min-h-[48px] bg-slate-900 text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2">
+            <div class="w-full h-full min-h-12 bg-slate-900 text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2">
                 <i class="fa-solid fa-search"></i>
                 <span>Search Directory</span>
             </div>
@@ -190,9 +213,16 @@ new class extends Component
                         @auth
                             @if (auth()->id() === $business->user_id)
                                 <button
+                                    wire:click="editBusiness({{ $business->id }})"
+                                    class="absolute top-3 right-12 w-9 h-9 rounded-full bg-white/80 hover:bg-amber-500 hover:text-slate-950 backdrop-blur-md flex items-center justify-center text-slate-700 transition shadow-md"
+                                    title="Edit listing"
+                                >
+                                    <i class="fa-solid fa-pen text-sm"></i>
+                                </button>
+                                <button
                                     wire:click="deleteBusiness({{ $business->id }})"
                                     wire:confirm="Remove {{ $business->name }} from the directory? This cannot be undone."
-                                    class="absolute top-3 right-12 w-9 h-9 rounded-full bg-white/80 hover:bg-red-500 hover:text-white backdrop-blur-md flex items-center justify-center text-slate-700 transition shadow-md"
+                                    class="absolute top-3 right-[5.25rem] w-9 h-9 rounded-full bg-white/80 hover:bg-red-500 hover:text-white backdrop-blur-md flex items-center justify-center text-slate-700 transition shadow-md"
                                     title="Delete listing"
                                 >
                                     <i class="fa-solid fa-trash text-sm"></i>
@@ -217,6 +247,20 @@ new class extends Component
                             </div>
 
                             <p class="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{{ $business->description }}</p>
+
+                            @if ($business->address)
+                                <a
+                                    href="https://www.google.com/maps/search/?api=1&query={{ urlencode(trim($business->address . ', ' . $business->location . ' ' . $business->zip)) }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    @click.stop
+                                    class="flex items-start gap-1.5 text-xs text-slate-500 hover:text-amber-600 mb-4 transition-colors"
+                                    title="Open in Google Maps"
+                                >
+                                    <i class="fa-solid fa-location-dot text-amber-600 mt-0.5"></i>
+                                    <span class="underline decoration-dotted underline-offset-2">{{ $business->address }}</span>
+                                </a>
+                            @endif
 
                             @if (! empty($business->tags))
                                 <div class="flex flex-wrap gap-1 mb-4">

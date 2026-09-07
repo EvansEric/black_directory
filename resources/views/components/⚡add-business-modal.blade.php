@@ -18,6 +18,7 @@ new class extends Component
     public string $zip = '';
     public string $phone = '';
     public string $website = '';
+    public string $tags = '';
     public $image;
     public string $description = '';
     public ?int $editingBusinessId = null;
@@ -32,6 +33,7 @@ new class extends Component
             'zip' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
             'website' => ['nullable', 'url', 'max:255'],
+            'tags' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'description' => ['required', 'string', 'max:2000'],
         ];
@@ -46,6 +48,12 @@ new class extends Component
         }
 
         $data = $this->validate();
+        $data['tags'] = collect(explode(',', $data['tags'] ?? ''))
+            ->map(fn (string $tag): string => trim($tag))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         if ($this->editingBusinessId) {
             $business = Business::query()->findOrFail($this->editingBusinessId);
@@ -80,7 +88,6 @@ new class extends Component
                 'rating' => 5.0,
                 'reviews_count' => 0,
                 'featured' => true,
-                'tags' => ['New Listing', 'Local'],
             ]);
         }
 
@@ -116,6 +123,7 @@ new class extends Component
         $this->zip = $business->zip ?? '';
         $this->phone = $business->phone ?? '';
         $this->website = $business->website ?? '';
+        $this->tags = implode(', ', $business->tags ?? []);
         $this->image = null;
         $this->description = $business->description;
         $this->resetValidation();
@@ -123,7 +131,7 @@ new class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['name', 'location', 'address', 'zip', 'phone', 'website', 'image', 'description', 'editingBusinessId']);
+        $this->reset(['name', 'location', 'address', 'zip', 'phone', 'website', 'tags', 'image', 'description', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
     }
@@ -222,6 +230,14 @@ new class extends Component
                 <input type="url" wire:model="website" placeholder="https://example.com"
                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 @error('website') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Tags</label>
+                <input type="text" wire:model="tags" placeholder="e.g. Black-owned, Family-friendly, Local"
+                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <p class="text-xs text-slate-500 mt-1">Separate multiple tags with commas.</p>
+                @error('tags') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>

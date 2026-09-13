@@ -51,7 +51,7 @@ new class extends Component
                 <button
                     x-data="{ isAuthed: @js(auth()->check()) }"
                     @click="isAuthed ? $dispatch('open-add-modal') : $dispatch('open-auth-modal')"
-                    class="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-lg shadow-amber-900/30 flex items-center space-x-2"
+                    class="bg-linear-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-lg shadow-amber-900/30 flex items-center space-x-2"
                 >
                     <i class="fa-solid fa-plus text-xs"></i>
                     <span>List Your Business</span>

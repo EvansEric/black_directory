@@ -116,7 +116,7 @@ new class extends Component
                 class="w-full pl-11 pr-4 py-3 bg-slate-50 md:bg-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50">
         </div>
         <div class="md:col-span-4 relative flex items-center border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0">
-            <button 
+            <button
                 type="button"
                 @click="askLocation(true)"
                 class="absolute left-4 text-slate-400 hover:text-amber-600 transition-colors focus:outline-none"
@@ -233,14 +233,14 @@ new class extends Component
                                 <button
                                     wire:click="deleteBusiness({{ $business->id }})"
                                     wire:confirm="Remove {{ $business->name }} from the directory? This cannot be undone."
-                                    class="absolute top-3 right-[5.25rem] w-9 h-9 rounded-full bg-white/80 hover:bg-red-500 hover:text-white backdrop-blur-md flex items-center justify-center text-slate-700 transition shadow-md"
+                                    class="absolute top-3 right-21 w-9 h-9 rounded-full bg-white/80 hover:bg-red-500 hover:text-white backdrop-blur-md flex items-center justify-center text-slate-700 transition shadow-md"
                                     title="Delete listing"
                                 >
                                     <i class="fa-solid fa-trash text-sm"></i>
                                 </button>
                                 <button
                                     @click="$dispatch('open-subscription-modal', { businessId: {{ $business->id }} })"
-                                    class="absolute top-3 right-[7.5rem] w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 backdrop-blur-md flex items-center justify-center font-bold transition shadow-md"
+                                    class="absolute top-3 right-30 w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 backdrop-blur-md flex items-center justify-center font-bold transition shadow-md"
                                     title="Upgrade subscription"
                                 >
                                     <i class="fa-solid fa-bolt text-sm"></i>

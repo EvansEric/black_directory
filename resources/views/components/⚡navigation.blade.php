@@ -34,13 +34,7 @@ new class extends Component
 
             {{-- Desktop Nav --}}
             <nav class="hidden md:flex items-center space-x-8 text-sm font-medium" x-data>
-                <button
-                    @click="$store.favorites.reset()"
-                    :class="!$store.favorites.showOnly ? 'text-amber-400 font-semibold' : 'text-slate-300 hover:text-white'"
-                    class="transition-colors"
-                >
-                    Explore Directory
-                </button>
+                <a href="#pricing" class="text-slate-300 hover:text-white transition-colors">Pricing</a>
                 <a href="#about" class="text-slate-300 hover:text-white transition-colors">Mission</a>
                 <button
                     @click="$store.favorites.showOnly = !$store.favorites.showOnly"

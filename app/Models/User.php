@@ -7,13 +7,11 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use App\Models\Business;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
 
 /**use App\Models\Business;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'stripe_customer_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -47,6 +45,16 @@ class User extends Authenticatable
         ];
     }
 
+    public function getStripeCustomerIdAttribute(): ?string
+    {
+        return $this->attributes['stripe_customer_id'] ?? null;
+    }
+
+    public function setStripeCustomerIdAttribute(?string $value): void
+    {
+        $this->attributes['stripe_customer_id'] = $value;
+    }
+
     /**
      * Get the user's initials
      */
@@ -59,7 +67,7 @@ class User extends Authenticatable
             : $initials;
     }
 
-        public function businesses(): HasMany
+    public function businesses(): HasMany
     {
         return $this->hasMany(Business::class);
     }

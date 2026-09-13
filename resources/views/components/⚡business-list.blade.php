@@ -63,11 +63,7 @@ new class extends Component
             });
         }
 
-        return match ($this->sortVal) {
-            'rating' => $query->orderByDesc('rating')->get(),
-            'name' => $query->orderBy('name')->get(),
-            default => $query->orderByDesc('featured')->latest()->get(),
-        };
+        return $query->orderedByTier($this->sortVal)->get();
     }
 
     public function selectCategory(string $category): void
@@ -111,7 +107,7 @@ new class extends Component
     }
 }; ?>
 
-<div id="directory">
+<div id="directory" x-data="directorySearch">
     {{-- Search Box --}}
     <div class="bg-white p-3 sm:p-4 rounded-2xl shadow-2xl max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-3 text-slate-800 -mt-10 relative z-10 mb-10">
         <div class="md:col-span-5 relative flex items-center">
@@ -120,7 +116,14 @@ new class extends Component
                 class="w-full pl-11 pr-4 py-3 bg-slate-50 md:bg-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50">
         </div>
         <div class="md:col-span-4 relative flex items-center border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0">
-            <i class="fa-solid fa-location-crosshairs text-slate-400 absolute left-4 text-sm"></i>
+            <button 
+                type="button"
+                @click="askLocation(true)"
+                class="absolute left-4 text-slate-400 hover:text-amber-600 transition-colors focus:outline-none"
+                :title="locating ? 'Detecting location...' : 'Use my current location'"
+            >
+                <i :class="locating ? 'fa-solid fa-spinner fa-spin text-amber-500' : 'fa-solid fa-location-crosshairs'" class="text-sm"></i>
+            </button>
             <input type="text" wire:model.live.debounce.300ms="location" placeholder="City or Zip Code"
                 class="w-full pl-11 pr-4 py-3 bg-slate-50 md:bg-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50">
         </div>
@@ -189,15 +192,23 @@ new class extends Component
                     class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
                 >
                     <div class="relative h-48 overflow-hidden bg-slate-100">
-                        <img src="{{ $business->image ? asset('storage/' . $business->image) : 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80' }}"
+                        <img src="{{ ($business->canAccessLogo() && $business->image) ? asset('storage/' . $business->image) : 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80' }}"
                             alt="{{ $business->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                         <div class="absolute inset-0 bg-linear-to-t from-slate-900/60 via-transparent to-transparent"></div>
 
                         <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
                             <span class="bg-slate-900/80 backdrop-blur-md text-amber-400 text-[11px] font-semibold px-2.5 py-1 rounded-lg">{{ $business->category }}</span>
-                            @if ($business->featured)
-                                <span class="bg-amber-500 text-slate-950 text-[11px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-                                    <i class="fa-solid fa-star text-[9px]"></i> Featured
+                            @if ($business->canAccessSpotlight())
+                                <span class="bg-amber-500 text-slate-950 text-[11px] font-extrabold px-2 py-1 rounded-lg flex items-center gap-1 shadow">
+                                    <i class="fa-solid fa-crown text-[9px]"></i> Spotlight
+                                </span>
+                            @elseif ($business->canAccessPrioritySearch())
+                                <span class="bg-amber-400 text-slate-950 text-[11px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                                    <i class="fa-solid fa-star text-[9px]"></i> Featured Pro
+                                </span>
+                            @elseif ($business->subscription_tier === 'standard')
+                                <span class="bg-slate-700 text-white text-[11px] font-semibold px-2 py-1 rounded-lg flex items-center gap-1">
+                                    <i class="fa-solid fa-check text-[9px]"></i> Standard
                                 </span>
                             @endif
                         </div>
@@ -227,6 +238,13 @@ new class extends Component
                                 >
                                     <i class="fa-solid fa-trash text-sm"></i>
                                 </button>
+                                <button
+                                    @click="$dispatch('open-subscription-modal', { businessId: {{ $business->id }} })"
+                                    class="absolute top-3 right-[7.5rem] w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 backdrop-blur-md flex items-center justify-center font-bold transition shadow-md"
+                                    title="Upgrade subscription"
+                                >
+                                    <i class="fa-solid fa-bolt text-sm"></i>
+                                </button>
                             @endif
                         @endauth
 
@@ -246,7 +264,21 @@ new class extends Component
                                 </div>
                             </div>
 
-                            <p class="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{{ $business->description }}</p>
+                            @if ($business->canAccessDescription())
+                                <p class="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{{ $business->description }}</p>
+                            @endif
+
+                            @if ($business->canAccessCustomUrl() && $business->website)
+                                <a
+                                    href="{{ $business->website }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-1.5 text-xs text-amber-600 font-semibold hover:underline mb-3"
+                                >
+                                    <i class="fa-solid fa-globe"></i>
+                                    <span>Visit Website</span>
+                                </a>
+                            @endif
 
                             @if ($business->address)
                                 <a
@@ -271,14 +303,25 @@ new class extends Component
                             @endif
                         </div>
 
-                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                             <span class="text-xs text-slate-400">Verified Black-Owned</span>
-                            @if ($business->phone)
-                                <a href="tel:{{ $business->phone }}" class="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center space-x-1">
-                                    <span>Call Business</span>
-                                    <i class="fa-solid fa-phone text-[10px]"></i>
-                                </a>
-                            @endif
+                            <div class="flex items-center space-x-2">
+                                @if ($business->canAccessLeadForms())
+                                    <button
+                                        @click="$dispatch('open-lead-modal', { businessId: {{ $business->id }} })"
+                                        class="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition flex items-center gap-1 shadow-sm"
+                                    >
+                                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                                        <span>Contact</span>
+                                    </button>
+                                @endif
+                                @if ($business->phone)
+                                    <a href="tel:{{ $business->phone }}" class="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center space-x-1">
+                                        <span>Call</span>
+                                        <i class="fa-solid fa-phone text-[10px]"></i>
+                                    </a>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>

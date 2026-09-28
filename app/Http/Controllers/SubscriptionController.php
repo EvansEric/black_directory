@@ -13,6 +13,7 @@ use Stripe\Checkout\Session as StripeSession;
 use Stripe\Customer as StripeCustomer;
 use Stripe\Stripe;
 use Stripe\Subscription as StripeSubscription;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class SubscriptionController extends Controller
 {
@@ -40,103 +41,85 @@ class SubscriptionController extends Controller
         /** @var Business $business */
         $business = Business::findOrFail($validated['business_id']);
 
-        if (Auth::check() && Auth::id() !== $business->user_id) {
-            return response()->json(['error' => 'Unauthorized to manage subscription for this listing.'], 403);
+        if (! Auth::check() || Auth::id() !== $business->user_id) {
+            abort(403, 'Unauthorized to manage subscription for this listing.');
         }
 
         $tierKey = $validated['tier'];
         $cycle = $validated['billing_cycle'];
-        $tierConfig = SubscriptionGating::TIERS[$tierKey] ?? null;
 
-        if (! $tierConfig) {
-            return response()->json(['error' => 'Invalid tier selected.'], 422);
+        $stripeSecret = config('services.stripe.secret');
+        $priceId = config("services.stripe.prices.{$tierKey}.{$cycle}");
+
+        if (blank($stripeSecret) || str_ends_with((string) $stripeSecret, '...')) {
+            abort(503, 'Stripe checkout is not configured. Add STRIPE_SECRET to your environment.');
         }
 
-        $stripeSecret = config('services.stripe.secret') ?? env('STRIPE_SECRET');
+        if (blank($priceId) || str_ends_with((string) $priceId, '...')) {
+            abort(503, "Stripe price is not configured for the {$tierKey} {$cycle} plan.");
+        }
 
-        if ($stripeSecret && ! str_contains($stripeSecret, 'placeholder')) {
-            try {
-                Stripe::setApiKey($stripeSecret);
+        try {
+            Stripe::setApiKey($stripeSecret);
 
-                $user = Auth::user() ?? $business->user;
+            $user = Auth::user();
 
-                // Ensure customer ID
-                $stripeCustomerId = $business->stripe_customer_id ?? $user?->stripe_customer_id;
-                if (! $stripeCustomerId && $user) {
-                    $customer = StripeCustomer::create([
-                        'email' => $user->email,
-                        'name' => $user->name,
-                        'metadata' => [
-                            'user_id' => $user->id,
-                            'business_id' => $business->id,
-                        ],
-                    ]);
-                    $stripeCustomerId = $customer->id;
-                    $user->update(['stripe_customer_id' => $stripeCustomerId]);
-                    $business->update(['stripe_customer_id' => $stripeCustomerId]);
-                }
+            // Reuse the customer's Stripe identity across repeat checkouts.
+            $stripeCustomerId = $business->stripe_customer_id ?? $user->stripe_customer_id;
+            if (! $stripeCustomerId) {
+                $customer = StripeCustomer::create([
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'metadata' => [
+                        'user_id' => $user->id,
+                        'business_id' => $business->id,
+                    ],
+                ]);
+                $stripeCustomerId = $customer->id;
+                $user->update(['stripe_customer_id' => $stripeCustomerId]);
+                $business->update(['stripe_customer_id' => $stripeCustomerId]);
+            }
 
-                $priceId = $cycle === 'annual'
-                    ? ($tierConfig['stripe_annual_price_id'] ?? null)
-                    : ($tierConfig['stripe_monthly_price_id'] ?? null);
-
-                $sessionParams = [
-                    'payment_method_types' => ['card'],
-                    'mode' => 'subscription',
-                    'customer' => $stripeCustomerId,
-                    'line_items' => [[
-                        'price' => $priceId,
-                        'quantity' => 1,
-                    ]],
-                    'success_url' => url('/?subscription=success&business_id='.$business->id),
-                    'cancel_url' => url('/?subscription=canceled&business_id='.$business->id),
+            $session = StripeSession::create([
+                'mode' => 'subscription',
+                'customer' => $stripeCustomerId,
+                'line_items' => [[
+                    'price' => $priceId,
+                    'quantity' => 1,
+                ]],
+                'success_url' => url('/?subscription=success&business_id='.$business->id),
+                'cancel_url' => url('/?subscription=canceled&business_id='.$business->id),
+                'metadata' => [
+                    'business_id' => (string) $business->id,
+                    'tier' => $tierKey,
+                    'billing_cycle' => $cycle,
+                ],
+                'subscription_data' => [
                     'metadata' => [
                         'business_id' => (string) $business->id,
                         'tier' => $tierKey,
                         'billing_cycle' => $cycle,
                     ],
-                    'subscription_data' => [
-                        'metadata' => [
-                            'business_id' => (string) $business->id,
-                            'tier' => $tierKey,
-                            'billing_cycle' => $cycle,
-                        ],
-                    ],
-                ];
-
-                $session = StripeSession::create($sessionParams);
-
-                if ($request->wantsJson() || $request->is('api/*')) {
-                    return response()->json([
-                        'checkout_url' => $session->url,
-                        'session_id' => $session->id,
-                    ]);
-                }
-
-                return redirect()->away($session->url);
-            } catch (\Throwable $e) {
-                Log::error('Stripe checkout error: '.$e->getMessage());
-            }
-        }
-
-        // Mock / Local Test fallback when Stripe API key is not configured or throws
-        $business->update([
-            'subscription_tier' => $tierKey,
-            'billing_cycle' => $cycle,
-            'subscription_status' => 'active',
-            'stripe_subscription_id' => $business->stripe_subscription_id ?? 'sub_mock_'.bin2hex(random_bytes(8)),
-            'stripe_customer_id' => $business->stripe_customer_id ?? 'cus_mock_'.bin2hex(random_bytes(8)),
-        ]);
-
-        if ($request->wantsJson() || $request->is('api/*')) {
-            return response()->json([
-                'message' => 'Subscription updated successfully.',
-                'business' => $business->fresh(),
-                'checkout_url' => url('/?subscription=success&business_id='.$business->id),
+                ],
             ]);
-        }
 
-        return redirect()->to('/?subscription=success&business_id='.$business->id);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'checkout_url' => $session->url,
+                    'session_id' => $session->id,
+                ]);
+            }
+
+            return redirect()->away($session->url);
+        } catch (\Throwable $e) {
+            Log::error('Stripe checkout error: '.$e->getMessage(), [
+                'business_id' => $business->id,
+                'tier' => $tierKey,
+                'billing_cycle' => $cycle,
+            ]);
+
+            throw new HttpException(502, 'Stripe could not start checkout. Please try again.');
+        }
     }
 
     /**

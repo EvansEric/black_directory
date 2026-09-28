@@ -1,4 +1,13 @@
 document.addEventListener('alpine:init', () => {
+    Alpine.store('theme', {
+        dark: localStorage.getItem('noir_theme') === 'dark',
+
+        toggle() {
+            this.dark = !this.dark;
+            localStorage.setItem('noir_theme', this.dark ? 'dark' : 'light');
+        },
+    });
+
     Alpine.store('favorites', {
         ids: JSON.parse(localStorage.getItem('roots_favorites') || '[]'),
         showOnly: false,
@@ -24,7 +33,7 @@ document.addEventListener('alpine:init', () => {
         locating: false,
 
         init() {
-            this.askLocation(false);
+            // Do not automatically trigger geolocation on component init to prevent continuous Livewire re-render loops
         },
 
         askLocation(force = false) {

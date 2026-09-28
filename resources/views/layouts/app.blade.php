@@ -16,7 +16,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="font-sans text-slate-800 flex flex-col min-h-screen bg-slate-50">
+<body
+    x-data
+    :class="$store.theme.dark ? 'dark' : ''"
+    class="font-sans text-slate-800 flex flex-col min-h-screen bg-slate-50"
+>
 
     {{ $slot ?? '' }}
 

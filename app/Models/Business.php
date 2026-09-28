@@ -133,6 +133,10 @@ class Business extends Model
     // Scope for Tier Priority Sorting (Homepage Spotlight > Featured / Pro > Standard > Free)
     public function scopeOrderedByTier(Builder $query, string $secondarySort = 'featured'): Builder
     {
+        if ($secondarySort === 'name') {
+            return $query->orderBy('name');
+        }
+
         $query->orderByRaw("
             CASE
                 WHEN subscription_tier = 'spotlight' AND (subscription_status = 'active' OR subscription_status = 'trialing' OR subscription_status IS NULL) THEN 4
@@ -144,7 +148,6 @@ class Business extends Model
 
         return match ($secondarySort) {
             'rating' => $query->orderByDesc('rating')->orderByDesc('created_at'),
-            'name' => $query->orderBy('name'),
             default => $query->orderByDesc('featured')->orderByDesc('created_at'),
         };
     }

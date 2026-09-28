@@ -16,50 +16,61 @@ new class extends Component
     }
 }; ?>
 
-<header class="sticky top-0 z-40 bg-brand-dark/95 backdrop-blur-md text-white border-b border-amber-900/30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-20">
+<header class="sticky top-0 z-40 border-b border-amber-900/10 bg-white/95 text-slate-900 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between gap-2 h-16 sm:h-20">
             {{-- Logo --}}
-            <a href="/" class="flex items-center space-x-3">
-                 <div class="w-11 h-11 rounded-2xl bg-amber-500 flex items-center justify-center font-serif text-2xl font-black text-noir-950 shadow-lg shadow-gold-500/20 group-hover:scale-105 transition-transform duration-300">
-                        N
-                    </div>
-                    <div>
-                        <span class="font-serif text-2xl font-bold tracking-tight text-white flex items-center gap-1.5">
-                            Noir<span class="gold-gradient-text">Directory</span>
-                        </span>
-                        <span class="block text-[10px] tracking-[0.2em] text-gold-400/80 font-bold uppercase">Local Black-Owned Excellence</span>
-                    </div>
+            <a href="/" class="flex min-w-0 items-center gap-2 sm:gap-3">
+                <div class="noir-logo-mark flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 font-serif text-lg font-black text-slate-950 shadow-lg shadow-amber-500/20 sm:h-11 sm:w-11 sm:text-2xl">
+                    N
+                </div>
+                <div class="min-w-0">
+                    <span class="noir-logo-wordmark font-serif text-base font-bold tracking-tight text-slate-900 sm:text-2xl">
+                        Noir<span class="text-amber-600">Directory</span>
+                    </span>
+                    <span class="hidden text-[9px] tracking-[0.18em] text-amber-700/80 font-bold uppercase sm:block">
+                        Local Black-Owned Excellence
+                    </span>
+                </div>
             </a>
 
-            {{-- Desktop Nav --}}
-            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium" x-data>
-                <a href="#pricing" class="text-slate-300 hover:text-white transition-colors">Pricing</a>
-                <a href="#about" class="text-slate-300 hover:text-white transition-colors">Mission</a>
-                <button
-                    @click="$store.favorites.showOnly = !$store.favorites.showOnly"
-                    :class="$store.favorites.showOnly ? 'text-amber-400 font-semibold' : 'text-slate-300 hover:text-white'"
-                    class="transition-colors flex items-center space-x-1.5"
-                >
-                    <i class="fa-solid fa-heart text-amber-500 text-xs"></i>
-                    <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
-                </button>
-            </nav>
+            {{-- Mobile/Nav actions --}}
+            <div class="flex items-center gap-2 sm:gap-3" x-data="{ userMenuOpen: false }">
+                <nav class="hidden md:flex items-center gap-6 text-sm font-medium" x-data>
+                    <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
+                    <a href="#about" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
+                    <button
+                        @click="$store.favorites.showOnly = !$store.favorites.showOnly"
+                        :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                        class="transition-colors flex items-center space-x-1.5"
+                    >
+                        <i class="fa-solid fa-heart text-amber-500 text-xs"></i>
+                        <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
+                    </button>
+                </nav>
 
-            {{-- Actions --}}
-            <div class="flex items-center space-x-4" x-data="{ userMenuOpen: false }">
+                <button
+                    type="button"
+                    @click="$store.theme.toggle()"
+                    class="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-amber-300 hover:text-amber-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-amber-500 dark:hover:text-amber-400"
+                    :title="$store.theme.dark ? 'Switch to light mode' : 'Switch to dark mode'"
+                    :aria-label="$store.theme.dark ? 'Switch to light mode' : 'Switch to dark mode'"
+                >
+                    <i :class="$store.theme.dark ? 'fa-solid fa-sun' : 'fa-solid fa-moon'" class="text-sm"></i>
+                </button>
+
                 <button
                     x-data="{ isAuthed: @js(auth()->check()) }"
                     @click="isAuthed ? $dispatch('open-add-modal') : $dispatch('open-auth-modal')"
-                    class="bg-linear-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-lg shadow-amber-900/30 flex items-center space-x-2"
+                    class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-400 sm:px-4 sm:py-2.5 sm:text-sm"
                 >
-                    <i class="fa-solid fa-plus text-xs"></i>
-                    <span>List Your Business</span>
+                    <i class="fa-solid fa-plus text-[10px] sm:text-xs"></i>
+                    <span class="hidden sm:inline sm:ml-2">List Your Business</span>
                 </button>
 
                 @auth
                     <div class="relative">
-                        <button @click="userMenuOpen = !userMenuOpen" class="w-10 h-10 rounded-full bg-amber-500 text-slate-900 font-bold flex items-center justify-center hover:bg-amber-400 transition">
+                        <button @click="userMenuOpen = !userMenuOpen" class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-slate-900 transition hover:bg-amber-400 sm:h-10 sm:w-10">
                             {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                         </button>
 
@@ -86,12 +97,25 @@ new class extends Component
                 @else
                     <button
                         @click="$dispatch('open-auth-modal')"
-                        class="text-slate-200 hover:text-white text-sm font-semibold px-3 py-2.5 rounded-xl transition"
+                        class="hidden text-sm font-semibold text-slate-700 transition hover:text-slate-950 sm:inline-flex"
                     >
                         Login / Sign Up
                     </button>
                 @endauth
             </div>
         </div>
+
+        <nav class="flex flex-wrap items-center justify-center gap-3 pb-3 text-xs font-medium md:hidden" x-data>
+            <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
+            <a href="#about" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
+            <button
+                @click="$store.favorites.showOnly = !$store.favorites.showOnly"
+                :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                class="transition-colors flex items-center space-x-1.5"
+            >
+                <i class="fa-solid fa-heart text-amber-500 text-[10px]"></i>
+                <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
+            </button>
+        </nav>
     </div>
 </header>

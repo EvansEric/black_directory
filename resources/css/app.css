@@ -7,11 +7,148 @@
     --font-sans: "Plus Jakarta Sans", sans-serif;
     --font-serif: "Playfair Display", serif;
  
-    --color-brand-50: #fdf8f6;
-    --color-brand-100: #f2e8e5;
+    --color-brand-50: #fffaf5;
+    --color-brand-100: #f7eadf;
     --color-brand-500: #d97706;
     --color-brand-600: #b45309;
-    --color-brand-800: #78350f;
-    --color-brand-900: #271b12;
-    --color-brand-dark: #14110f;
+    --color-brand-800: #92400e;
+    --color-brand-900: #4a2c20;
+    --color-brand-dark: #fffaf5;
 }
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #fffdfb;
+    color: #0f172a;
+    overflow-x: hidden;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+img, svg {
+    display: block;
+    max-width: 100%;
+}
+
+button, input, select {
+    font: inherit;
+}
+
+/* The dark theme intentionally reuses the original charcoal and brown palette. */
+.dark {
+    background: #14110f;
+    color: #e5e7eb;
+}
+
+.dark .bg-slate-50,
+.dark .bg-white {
+    background-color: #1f2937 !important;
+}
+
+.dark .bg-brand-50,
+.dark .bg-brand-dark {
+    background-color: #14110f !important;
+}
+
+.dark .bg-brand-100 {
+    background-color: #271b12 !important;
+}
+
+.dark [class*="bg-amber-50"] {
+    background-color: rgb(120 53 15 / 0.2) !important;
+}
+
+.dark [class*="bg-amber-950"] {
+    background-color: rgb(120 53 15 / 0.2) !important;
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+    color: #f8fafc !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-slate-400 {
+    color: #cbd5e1 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300 {
+    border-color: rgb(148 163 184 / 0.2) !important;
+}
+
+.dark input,
+.dark select {
+    background-color: #1f2937 !important;
+    color: #f8fafc !important;
+    border-color: rgb(148 163 184 / 0.25);
+}
+
+.dark input::placeholder {
+    color: #94a3b8;
+}
+
+.dark header {
+    background-color: rgb(20 17 15 / 0.95) !important;
+    color: #f8fafc;
+    border-color: rgb(120 53 15 / 0.3) !important;
+}
+
+.dark footer {
+    background-color: #14110f !important;
+    color: #94a3b8;
+    border-color: rgb(120 53 15 / 0.3) !important;
+}
+
+.dark .shadow-sm,
+.dark .shadow-xl,
+.dark .shadow-2xl {
+    --tw-shadow-color: rgb(0 0 0 / 0.35);
+}
+
+.dark .promote-listing-button {
+    background-color: #fbbf24 !important;
+    color: #24160b !important;
+    box-shadow: 0 12px 24px rgb(251 191 36 / 0.18);
+}
+
+.dark .promote-listing-button:hover {
+    background-color: #fcd34d !important;
+    color: #24160b !important;
+}
+
+.dark .noir-logo-mark {
+    background-color: #fbbf24 !important;
+    color: #24160b !important;
+    box-shadow: 0 10px 22px rgb(251 191 36 / 0.2);
+}
+
+.dark .noir-logo-wordmark {
+    color: #f8fafc !important;
+}
+
+.most-popular-badge {
+    z-index: 1;
+    background-color: #fbbf24;
+    color: #24160b;
+    border: 1px solid #d97706;
+    box-shadow: 0 4px 12px rgb(180 83 9 / 0.22);
+}
+
+.dark .most-popular-badge {
+    background-color: #fcd34d !important;
+    color: #24160b !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 4px 14px rgb(251 191 36 / 0.32);
+}
+

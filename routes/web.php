@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 
 Route::livewire('/', 'pages::home')->name('home');
+Route::livewire('/pricing', 'pages::pricing')->name('pricing');
 
 // Subscription Routes
 Route::get('/subscriptions/pricing', [SubscriptionController::class, 'pricing'])->name('subscriptions.pricing');

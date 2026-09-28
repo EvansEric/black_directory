@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Business;
+use App\Services\SubscriptionGating;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
@@ -55,8 +56,21 @@ new class extends Component
             ->values()
             ->all();
 
+        $existingBusiness = $this->editingBusinessId
+            ? Business::query()->findOrFail($this->editingBusinessId)
+            : null;
+
+        // Custom link and logo upload are Standard-tier features; strip them for free listings.
+        if (! SubscriptionGating::canAccessCustomUrl($existingBusiness)) {
+            $data['website'] = $existingBusiness?->website;
+        }
+
+        if (! SubscriptionGating::canAccessLogo($existingBusiness)) {
+            $this->image = null;
+        }
+
         if ($this->editingBusinessId) {
-            $business = Business::query()->findOrFail($this->editingBusinessId);
+            $business = $existingBusiness;
 
             if (Auth::id() !== $business->user_id) {
                 abort(403, 'You are not authorized to edit this business.');
@@ -134,6 +148,21 @@ new class extends Component
         $this->reset(['name', 'location', 'address', 'zip', 'phone', 'website', 'tags', 'image', 'description', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
+    }
+
+    public function canEditWebsite(): bool
+    {
+        return SubscriptionGating::canAccessCustomUrl($this->currentBusiness());
+    }
+
+    public function canEditLogo(): bool
+    {
+        return SubscriptionGating::canAccessLogo($this->currentBusiness());
+    }
+
+    private function currentBusiness(): ?Business
+    {
+        return $this->editingBusinessId ? Business::find($this->editingBusinessId) : null;
     }
 }; ?>
 
@@ -227,9 +256,16 @@ new class extends Component
 
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Website URL</label>
-                <input type="url" wire:model="website" placeholder="https://example.com"
-                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                @error('website') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                @if ($this->canEditWebsite())
+                    <input type="url" wire:model="website" placeholder="https://example.com"
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    @error('website') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                @else
+                    <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Custom link is a Standard-tier feature</span>
+                        <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                    </div>
+                @endif
             </div>
 
             <div>
@@ -242,13 +278,20 @@ new class extends Component
 
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Business Image</label>
-                <input type="file" wire:model="image" accept="image/*"
-                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm file:mr-4 file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 focus:outline-none">
-                <div wire:loading wire:target="image" class="text-xs text-amber-600 mt-1">Uploading preview...</div>
-                @if ($editingBusinessId)
-                    <p class="text-xs text-slate-500 mt-1">Choose a new image only to replace the current one.</p>
+                @if ($this->canEditLogo())
+                    <input type="file" wire:model="image" accept="image/*"
+                           class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm file:mr-4 file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 focus:outline-none">
+                    <div wire:loading wire:target="image" class="text-xs text-amber-600 mt-1">Uploading preview...</div>
+                    @if ($editingBusinessId)
+                        <p class="text-xs text-slate-500 mt-1">Choose a new image only to replace the current one.</p>
+                    @endif
+                    @error('image') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                @else
+                    <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Logo upload is a Standard-tier feature</span>
+                        <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                    </div>
                 @endif
-                @error('image') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>

@@ -62,3 +62,21 @@ it('forbids a non-owner from opening the edit form', function () {
         ->call('editBusiness', $business->id)
         ->assertForbidden();
 });
+
+it('paginates the business directory six listings at a time and resets on search', function () {
+    $user = User::factory()->create();
+
+    foreach (range(1, 8) as $index) {
+        businessFor($user, ['name' => "Directory Business {$index}"]);
+    }
+
+    $component = Livewire::test('business-list');
+
+    expect($component->instance()->businesses->count())->toBe(6);
+
+    $component->call('nextPage');
+    expect($component->instance()->businesses->count())->toBe(2);
+
+    $component->set('search', 'Directory');
+    expect($component->instance()->businesses->count())->toBe(6);
+});

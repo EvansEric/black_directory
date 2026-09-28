@@ -5,9 +5,12 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new class extends Component
 {
+    use WithPagination;
+
     public string $search = '';
     public string $location = '';
     public string $category = 'All';
@@ -63,17 +66,26 @@ new class extends Component
             });
         }
 
-        return $query->orderedByTier($this->sortVal)->get();
+        return $query->orderedByTier($this->sortVal)->paginate(6);
+    }
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['search', 'location', 'category', 'sortVal'], true)) {
+            $this->resetPage();
+        }
     }
 
     public function selectCategory(string $category): void
     {
         $this->category = $category;
+        $this->resetPage();
     }
 
     public function resetFilters(): void
     {
         $this->reset(['search', 'location', 'category', 'sortVal']);
+        $this->resetPage();
     }
 
     #[On('business-updated')]
@@ -140,7 +152,7 @@ new class extends Component
         @foreach ($categories as $cat)
             <button
                 wire:click="selectCategory('{{ $cat }}')"
-                class="px-4 py-2 rounded-full font-medium transition duration-200 border {{ $category === $cat ? 'bg-amber-500 text-slate-900 border-amber-500 font-bold shadow-md' : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700 hover:text-white' }}"
+                class="px-4 py-2 rounded-full font-medium transition duration-200 border {{ $category === $cat ? 'bg-amber-500 text-slate-900 border-amber-500 font-bold shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-slate-900 hover:border-amber-200' }}"
             >
                 {{ $cat }}
             </button>
@@ -153,7 +165,7 @@ new class extends Component
             <h2 class="text-xl font-bold text-slate-900">
                 @if($category !== 'All') {{ $category }} Businesses @else All Local Businesses @endif
             </h2>
-            <p class="text-xs text-slate-500 mt-1">Showing {{ $this->businesses->count() }} business{{ $this->businesses->count() === 1 ? '' : 'es' }}</p>
+            <p class="text-xs text-slate-500 mt-1">Showing {{ $this->businesses->count() }} of {{ $this->businesses->total() }} business{{ $this->businesses->total() === 1 ? '' : 'es' }}</p>
         </div>
 
         <div class="flex items-center space-x-3">
@@ -183,7 +195,7 @@ new class extends Component
 
     {{-- Directory Grid --}}
     @if ($this->businesses->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" wire:loading.class="opacity-50">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" wire:loading.class="opacity-50">
             @foreach ($this->businesses as $business)
                 <div
                     wire:key="business-{{ $business->id }}"
@@ -191,7 +203,7 @@ new class extends Component
                     x-show="!$store.favorites.showOnly || $store.favorites.has({{ $business->id }})"
                     class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
                 >
-                    <div class="relative h-48 overflow-hidden bg-slate-100">
+                    <div class="relative h-40 overflow-hidden bg-slate-100">
                         <img src="{{ ($business->canAccessLogo() && $business->image) ? asset('storage/' . $business->image) : 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80' }}"
                             alt="{{ $business->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                         <div class="absolute inset-0 bg-linear-to-t from-slate-900/60 via-transparent to-transparent"></div>
@@ -254,10 +266,10 @@ new class extends Component
                         </div>
                     </div>
 
-                    <div class="p-5 grow flex flex-col justify-between">
+                    <div class="p-4 grow flex flex-col justify-between">
                         <div>
                             <div class="flex justify-between items-start mb-2">
-                                <h3 class="font-bold text-slate-900 text-lg group-hover:text-amber-600 transition-colors line-clamp-1">{{ $business->name }}</h3>
+                                <h3 class="font-bold text-slate-900 text-base group-hover:text-amber-600 transition-colors line-clamp-1">{{ $business->name }}</h3>
                                 <div class="flex items-center space-x-1 bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md text-xs font-bold shrink-0">
                                     <i class="fa-solid fa-star text-amber-500 text-[10px]"></i>
                                     <span>{{ $business->rating }}</span>
@@ -327,6 +339,39 @@ new class extends Component
                 </div>
             @endforeach
         </div>
+
+        @if ($this->businesses->hasPages())
+            <nav class="mt-6 flex justify-center" aria-label="Business directory pagination">
+                <div class="inline-flex items-center gap-3">
+                    <button
+                        type="button"
+                        wire:click="previousPage"
+                        @disabled($this->businesses->onFirstPage())
+                        class="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Previous page"
+                    >
+                        <i class="fa-solid fa-chevron-left mr-2 text-xs" aria-hidden="true"></i>
+                        Previous
+                    </button>
+
+                    <span class="text-sm text-slate-600">
+                        Page <span class="font-semibold text-slate-900">{{ $this->businesses->currentPage() }}</span>
+                        of <span class="font-semibold text-slate-900">{{ $this->businesses->lastPage() }}</span>
+                    </span>
+
+                    <button
+                        type="button"
+                        wire:click="nextPage"
+                        @disabled($this->businesses->currentPage() >= $this->businesses->lastPage())
+                        class="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Next page"
+                    >
+                        Next
+                        <i class="fa-solid fa-chevron-right ml-2 text-xs" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </nav>
+        @endif
     @else
         <div class="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300">
             <div class="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">

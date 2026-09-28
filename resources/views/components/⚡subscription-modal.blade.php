@@ -14,8 +14,12 @@ new class extends Component
     public string $billingCycle = 'monthly';
 
     #[On('open-subscription-modal')]
-    public function openSubscriptionModal(?int $businessId = null): void
+    public function openSubscriptionModal(?int $businessId = null, ?string $tier = null): void
     {
+        if ($tier && in_array($tier, ['standard', 'pro', 'spotlight'], true)) {
+            $this->selectedTier = $tier;
+        }
+
         if ($businessId) {
             $this->businessId = $businessId;
             $this->business = Business::find($businessId);
@@ -144,7 +148,7 @@ new class extends Component
                     <p class="text-xs text-slate-500 mb-4">Essential custom branding for growing local businesses.</p>
 
                     <div class="mb-4">
-                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '190' : '19' }}</span>
+                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '95.90' : '9.99' }}</span>
                         <span class="text-xs text-slate-500">/{{ $billingCycle === 'annual' ? 'year' : 'month' }}</span>
                     </div>
 
@@ -170,7 +174,7 @@ new class extends Component
                 wire:click="selectTier('pro')"
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'pro' ? 'border-amber-500 bg-amber-50/40 shadow-xl ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300' }}"
             >
-                <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 font-extrabold text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow">
+                <div class="most-popular-badge absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-md">
                     Most Popular
                 </div>
 
@@ -179,7 +183,7 @@ new class extends Component
                     <p class="text-xs text-slate-500 mb-4">Priority placement & direct customer lead forms.</p>
 
                     <div class="mb-4">
-                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '490' : '49' }}</span>
+                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '191.90' : '19.99' }}</span>
                         <span class="text-xs text-slate-500">/{{ $billingCycle === 'annual' ? 'year' : 'month' }}</span>
                     </div>
 
@@ -210,7 +214,7 @@ new class extends Component
                     <p class="text-xs text-slate-500 mb-4">Maximum reach with top banner & homepage rotation.</p>
 
                     <div class="mb-4">
-                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '1990' : '199' }}</span>
+                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '959.90' : '99.99' }}</span>
                         <span class="text-xs text-slate-500">/{{ $billingCycle === 'annual' ? 'year' : 'month' }}</span>
                     </div>
 
@@ -247,7 +251,7 @@ new class extends Component
                 class="w-full sm:w-auto px-8 py-3.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-amber-900/20"
                 wire:loading.attr="disabled" wire:target="checkout"
             >
-                <span wire:loading.remove wire:target="checkout">Proceed to Checkout (${{ match($selectedTier) { 'spotlight' => ($billingCycle === 'annual' ? '1,990/yr' : '199/mo'), 'pro' => ($billingCycle === 'annual' ? '490/yr' : '49/mo'), default => ($billingCycle === 'annual' ? '190/yr' : '19/mo') } }})</span>
+                <span wire:loading.remove wire:target="checkout">Proceed to Checkout (${{ match($selectedTier) { 'spotlight' => ($billingCycle === 'annual' ? '959.90/yr' : '99.99/mo'), 'pro' => ($billingCycle === 'annual' ? '191.90/yr' : '19.99/mo'), default => ($billingCycle === 'annual' ? '95.90/yr' : '9.99/mo') } }})</span>
                 <span wire:loading wire:target="checkout">Preparing Checkout...</span>
             </button>
         </div>

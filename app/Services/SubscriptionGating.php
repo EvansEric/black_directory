@@ -19,8 +19,8 @@ class SubscriptionGating
         self::TIER_STANDARD => [
             'key' => self::TIER_STANDARD,
             'name' => 'Basic / Standard',
-            'monthly_price' => 19.00,
-            'annual_price' => 190.00,
+            'monthly_price' => 9.99,
+            'annual_price' => 95.90,
             'stripe_monthly_price_id' => 'price_standard_monthly',
             'stripe_annual_price_id' => 'price_standard_annual',
             'features' => ['Custom Link', 'Logo Upload', 'Business Description'],
@@ -29,8 +29,8 @@ class SubscriptionGating
         self::TIER_PRO => [
             'key' => self::TIER_PRO,
             'name' => 'Featured / Pro',
-            'monthly_price' => 49.00,
-            'annual_price' => 490.00,
+            'monthly_price' => 19.99,
+            'annual_price' => 191.90,
             'stripe_monthly_price_id' => 'price_pro_monthly',
             'stripe_annual_price_id' => 'price_pro_annual',
             'features' => ['Priority Search Placement', 'Lead Generation Forms', 'All Basic Features'],
@@ -39,8 +39,8 @@ class SubscriptionGating
         self::TIER_SPOTLIGHT => [
             'key' => self::TIER_SPOTLIGHT,
             'name' => 'Homepage Spotlight',
-            'monthly_price' => 199.00,
-            'annual_price' => 1990.00,
+            'monthly_price' => 99.99,
+            'annual_price' => 959.90,
             'stripe_monthly_price_id' => 'price_spotlight_monthly',
             'stripe_annual_price_id' => 'price_spotlight_annual',
             'features' => ['Top Banner & Homepage Rotation Slots', 'Priority Search Placement', 'Lead Generation Forms', 'All Featured Features'],

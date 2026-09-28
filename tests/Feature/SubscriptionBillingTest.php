@@ -163,16 +163,15 @@ test('subscription checkout and cancellation routes work', function () {
         ->assertOk()
         ->assertJsonStructure(['tiers']);
 
-    // Checkout request
+    // Checkout must not grant access when Stripe is not configured.
     $response = $this->postJson('/subscriptions/checkout', [
         'business_id' => $business->id,
         'tier' => 'pro',
         'billing_cycle' => 'monthly',
     ]);
 
-    $response->assertOk();
-    expect($business->fresh()->subscription_tier)->toBe('pro')
-        ->and($business->fresh()->subscription_status)->toBe('active');
+    $response->assertStatus(503);
+    expect($business->fresh()->subscription_tier)->toBe('free');
 
     // Cancel request
     $cancelResponse = $this->postJson('/subscriptions/cancel', [
@@ -300,5 +299,14 @@ test('listings search and directory queries order results by tier priority', fun
         $pro->id,
         $standard->id,
         $free->id,
+    ]);
+
+    $alphabetical = Business::query()->orderedByTier('name')->get();
+
+    expect($alphabetical->pluck('id')->all())->toBe([
+        $free->id,
+        $standard->id,
+        $pro->id,
+        $spotlight->id,
     ]);
 });

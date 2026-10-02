@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'stripe_customer_id'])]
+#[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -43,16 +43,6 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
-    }
-
-    public function getStripeCustomerIdAttribute(): ?string
-    {
-        return $this->attributes['stripe_customer_id'] ?? null;
-    }
-
-    public function setStripeCustomerIdAttribute(?string $value): void
-    {
-        $this->attributes['stripe_customer_id'] = $value;
     }
 
     /**

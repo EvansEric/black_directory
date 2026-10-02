@@ -106,7 +106,7 @@ new class extends Component
 
 <div
     x-data="{ open: false, tab: 'login' }"
-    x-on:open-auth-modal.window="open = true; tab = 'login'"
+    x-on:open-auth-modal.window="open = true; tab = $event.detail?.tab || 'login'"
     x-show="open"
     x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0"

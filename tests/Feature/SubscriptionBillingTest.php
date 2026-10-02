@@ -6,12 +6,22 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('models support camelCase subscription properties and snake_case attributes', function () {
-    $user = User::factory()->create([
-        'stripe_customer_id' => 'cus_test123',
-    ]);
+function postStripeWebhook($test, array $payload): void
+{
+    config(['cashier.webhook.secret' => 'whsec_test']);
 
-    expect($user->stripeCustomerId)->toBe('cus_test123');
+    $body = json_encode($payload);
+    $timestamp = time();
+    $signature = hash_hmac('sha256', "{$timestamp}.{$body}", 'whsec_test');
+
+    $test->call('POST', '/api/webhooks/stripe', [], [], [], [
+        'CONTENT_TYPE' => 'application/json',
+        'HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}",
+    ], $body)->assertOk();
+}
+
+test('models support camelCase subscription properties and snake_case attributes', function () {
+    $user = User::factory()->create();
 
     $business = Business::create([
         'user_id' => $user->id,
@@ -21,15 +31,13 @@ test('models support camelCase subscription properties and snake_case attributes
         'description' => 'Great professional services.',
         'subscription_tier' => 'pro',
         'billing_cycle' => 'annual',
-        'stripe_customer_id' => 'cus_test123',
-        'stripe_subscription_id' => 'sub_test999',
+        'stripe_id' => 'cus_test123',
         'subscription_status' => 'active',
     ]);
 
     expect($business->subscriptionTier)->toBe('pro')
         ->and($business->billingCycle)->toBe('annual')
-        ->and($business->stripeCustomerId)->toBe('cus_test123')
-        ->and($business->stripeSubscriptionId)->toBe('sub_test999')
+        ->and($business->stripe_id)->toBe('cus_test123')
         ->and($business->subscriptionStatus)->toBe('active');
 });
 
@@ -191,19 +199,26 @@ test('stripe webhook handles subscription updates, deletions, and payment failur
         'location' => 'Atlanta, GA',
         'description' => 'Test desc',
         'subscription_tier' => 'standard',
-        'stripe_subscription_id' => 'sub_wh_123',
-        'stripe_customer_id' => 'cus_wh_123',
+        'stripe_id' => 'cus_wh_123',
         'subscription_status' => 'active',
+    ]);
+    $business->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_wh_123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_x',
+        'quantity' => 1,
     ]);
 
     // 1. customer.subscription.updated
-    $this->postJson('/api/webhooks/stripe', [
+    postStripeWebhook($this, [
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => [
                 'id' => 'sub_wh_123',
                 'customer' => 'cus_wh_123',
                 'status' => 'active',
+                'items' => ['data' => [['id' => 'si_1', 'price' => ['id' => 'price_x', 'product' => 'prod_x'], 'quantity' => 1]]],
                 'metadata' => [
                     'business_id' => $business->id,
                     'tier' => 'spotlight',
@@ -211,13 +226,13 @@ test('stripe webhook handles subscription updates, deletions, and payment failur
                 ],
             ],
         ],
-    ])->assertOk();
+    ]);
 
     expect($business->fresh()->subscription_tier)->toBe('spotlight')
         ->and($business->fresh()->billing_cycle)->toBe('annual');
 
     // 2. invoice.payment_failed
-    $this->postJson('/api/webhooks/stripe', [
+    postStripeWebhook($this, [
         'type' => 'invoice.payment_failed',
         'data' => [
             'object' => [
@@ -225,12 +240,12 @@ test('stripe webhook handles subscription updates, deletions, and payment failur
                 'customer' => 'cus_wh_123',
             ],
         ],
-    ])->assertOk();
+    ]);
 
     expect($business->fresh()->subscription_status)->toBe('past_due');
 
     // 3. customer.subscription.deleted
-    $this->postJson('/api/webhooks/stripe', [
+    postStripeWebhook($this, [
         'type' => 'customer.subscription.deleted',
         'data' => [
             'object' => [
@@ -238,7 +253,7 @@ test('stripe webhook handles subscription updates, deletions, and payment failur
                 'customer' => 'cus_wh_123',
             ],
         ],
-    ])->assertOk();
+    ]);
 
     expect($business->fresh()->subscription_status)->toBe('canceled')
         ->and($business->fresh()->subscription_tier)->toBe('free');

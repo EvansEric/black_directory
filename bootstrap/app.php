@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies('*');
         $middleware->validateCsrfTokens(except: [
             'api/webhooks/stripe',
-            'stripe/webhook',
+            'stripe/*',
         ]);
         $middleware->alias([
             'subscription.feature' => VerifySubscriptionFeature::class,

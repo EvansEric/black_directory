@@ -38,7 +38,7 @@ new class extends Component
             <div class="flex items-center gap-2 sm:gap-3" x-data="{ userMenuOpen: false }">
                 <nav class="hidden md:flex items-center gap-6 text-sm font-medium" x-data>
                     <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
-                    <a href="#about" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
+                    <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
                     <button
                         @click="$store.favorites.showOnly = !$store.favorites.showOnly"
                         :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
@@ -96,10 +96,16 @@ new class extends Component
                     </div>
                 @else
                     <button
-                        @click="$dispatch('open-auth-modal')"
+                        @click="$dispatch('open-auth-modal', { tab: 'login' })"
                         class="hidden text-sm font-semibold text-slate-700 transition hover:text-slate-950 sm:inline-flex"
                     >
-                        Login / Sign Up
+                        Login
+                    </button>
+                    <button
+                        @click="$dispatch('open-auth-modal', { tab: 'register' })"
+                        class="hidden text-sm font-semibold text-amber-700 transition hover:text-amber-600 sm:inline-flex"
+                    >
+                        Sign Up
                     </button>
                 @endauth
             </div>
@@ -107,7 +113,7 @@ new class extends Component
 
         <nav class="flex flex-wrap items-center justify-center gap-3 pb-3 text-xs font-medium md:hidden" x-data>
             <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
-            <a href="#about" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
+            <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
             <button
                 @click="$store.favorites.showOnly = !$store.favorites.showOnly"
                 :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"

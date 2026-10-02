@@ -13,15 +13,15 @@ use Illuminate\Validation\Rules;
 
 Route::livewire('/', 'pages::home')->name('home');
 Route::livewire('/pricing', 'pages::pricing')->name('pricing');
+Route::livewire('/mission', 'pages::mission')->name('mission');
 
 // Subscription Routes
 Route::get('/subscriptions/pricing', [SubscriptionController::class, 'pricing'])->name('subscriptions.pricing');
 Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])->name('subscriptions.checkout');
 Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
 
-// Stripe Webhook Handlers
-Route::post('/api/webhooks/stripe', [StripeWebhookController::class, 'handle'])->name('webhooks.stripe');
-Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
+// Stripe webhooks (Cashier also serves them at /stripe/webhook)
+Route::post('/api/webhooks/stripe', [StripeWebhookController::class, 'handleWebhook'])->name('webhooks.stripe');
 
 // Lead Generation Endpoint for Listings
 Route::post('/listings/{business}/leads', [LeadController::class, 'store'])

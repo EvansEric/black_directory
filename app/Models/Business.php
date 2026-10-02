@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Cashier\Billable;
 
 class Business extends Model
 {
-    use HasFactory;
+    use Billable, HasFactory;
 
     protected $fillable = [
         'user_id',
@@ -30,8 +31,7 @@ class Business extends Model
         'tags',
         'subscription_tier',
         'billing_cycle',
-        'stripe_customer_id',
-        'stripe_subscription_id',
+        'stripe_id',
         'subscription_status',
         'subscription_ends_at',
     ];
@@ -64,24 +64,19 @@ class Business extends Model
         $this->attributes['billing_cycle'] = $value;
     }
 
-    public function getStripeCustomerIdAttribute(): ?string
+    public function stripeEmail(): ?string
     {
-        return $this->attributes['stripe_customer_id'] ?? null;
+        return $this->user?->email;
     }
 
-    public function setStripeCustomerIdAttribute(?string $value): void
+    public function stripeName(): ?string
     {
-        $this->attributes['stripe_customer_id'] = $value;
+        return $this->name;
     }
 
-    public function getStripeSubscriptionIdAttribute(): ?string
+    public function stripeMetadata(): array
     {
-        return $this->attributes['stripe_subscription_id'] ?? null;
-    }
-
-    public function setStripeSubscriptionIdAttribute(?string $value): void
-    {
-        $this->attributes['stripe_subscription_id'] = $value;
+        return ['business_id' => (string) $this->id];
     }
 
     public function getSubscriptionStatusAttribute(): string

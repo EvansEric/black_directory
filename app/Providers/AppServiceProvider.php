@@ -2,11 +2,15 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\StripeWebhookController;
+use App\Models\Business;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(CashierWebhookController::class, StripeWebhookController::class);
     }
 
     /**
@@ -23,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Cashier::useCustomerModel(Business::class);
+
         $this->configureDefaults();
     }
 

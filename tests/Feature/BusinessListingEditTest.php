@@ -36,7 +36,8 @@ it('allows a business owner to edit their listing', function () {
         ->assertSet('editingBusinessId', $business->id)
         ->assertSet('name', 'Original Business')
         ->set('name', 'Updated Business')
-        ->set('location', 'Decatur, GA')
+        ->set('city', 'Decatur')
+        ->set('state', 'GA')
         ->set('description', 'The updated description.')
         ->call('save')
         ->assertDispatched('business-updated')
@@ -51,6 +52,30 @@ it('allows a business owner to edit their listing', function () {
         ->reviews_count->toBe(12)
         ->featured->toBeFalse()
         ->tags->toBe(['Local']);
+});
+
+it('allows insurance businesses to be listed and filtered by category', function () {
+    $owner = User::factory()->create();
+
+    Livewire::actingAs($owner)
+        ->test('add-business-modal')
+        ->assertSee('<option value="Insurance">Insurance</option>', false)
+        ->set('name', 'Neighborhood Insurance')
+        ->set('category', 'Insurance')
+        ->set('city', 'Atlanta')
+        ->set('state', 'GA')
+        ->set('description', 'Insurance coverage for local families.')
+        ->call('save')
+        ->assertDispatched('business-saved');
+
+    $business = Business::query()->where('name', 'Neighborhood Insurance')->firstOrFail();
+    expect($business->category)->toBe('Insurance');
+
+    Livewire::test('business-list')
+        ->assertSee('Insurance')
+        ->call('selectCategory', 'Insurance')
+        ->assertSee('Neighborhood Insurance')
+        ->assertDontSee('Original Business');
 });
 
 it('forbids a non-owner from opening the edit form', function () {
@@ -79,4 +104,34 @@ it('paginates the business directory six listings at a time and resets on search
 
     $component->set('search', 'Directory');
     expect($component->instance()->businesses->count())->toBe(6);
+});
+
+
+it('limits how many businesses an owner can add by tier', function () {
+    $user = User::factory()->create();
+    businessFor($user);
+
+    Livewire::actingAs($user)
+        ->test('add-business-modal')
+        ->set('name', 'Second Business')
+        ->set('city', 'Atlanta')
+        ->set('state', 'GA')
+        ->set('description', 'Another listing.')
+        ->call('save')
+        ->assertHasErrors('name');
+
+    expect($user->businesses()->count())->toBe(1);
+
+    businessFor($user, ['subscription_tier' => 'pro', 'subscription_status' => 'active']);
+
+    Livewire::actingAs($user)
+        ->test('add-business-modal')
+        ->set('name', 'Third Business')
+        ->set('city', 'Atlanta')
+        ->set('state', 'GA')
+        ->set('description', 'Another listing.')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($user->businesses()->count())->toBe(3);
 });

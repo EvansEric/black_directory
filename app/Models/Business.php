@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\SubscriptionGating;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,7 @@ use Laravel\Cashier\Billable;
 
 class Business extends Model
 {
+    /** @use HasFactory<Factory<Business>> */
     use Billable, HasFactory;
 
     protected $fillable = [
@@ -19,6 +21,8 @@ class Business extends Model
         'name',
         'category',
         'location',
+        'city',
+        'state',
         'address',
         'zip',
         'phone',
@@ -35,6 +39,16 @@ class Business extends Model
         'subscription_status',
         'subscription_ends_at',
     ];
+
+    protected static function booted(): void
+    {
+        // The combined "City, ST" label stays in sync for search and display.
+        static::saving(function (self $business): void {
+            if (filled($business->city) && filled($business->state)) {
+                $business->location = trim($business->city).', '.strtoupper(trim($business->state));
+            }
+        });
+    }
 
     protected $casts = [
         'tags' => 'array',
@@ -74,6 +88,9 @@ class Business extends Model
         return $this->name;
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function stripeMetadata(): array
     {
         return ['business_id' => (string) $this->id];
@@ -126,6 +143,10 @@ class Business extends Model
     }
 
     // Scope for Tier Priority Sorting (Homepage Spotlight > Featured / Pro > Standard > Free)
+    /**
+     * @param  Builder<Business>  $query
+     * @return Builder<Business>
+     */
     public function scopeOrderedByTier(Builder $query, string $secondarySort = 'featured'): Builder
     {
         if ($secondarySort === 'name') {
@@ -147,6 +168,10 @@ class Business extends Model
         };
     }
 
+    /**
+     * @param  Builder<Business>  $query
+     * @return Builder<Business>
+     */
     public function scopeSpotlight(Builder $query): Builder
     {
         return $query->where(function ($q) {
@@ -158,11 +183,17 @@ class Business extends Model
         });
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return HasMany<Lead, $this>
+     */
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class);

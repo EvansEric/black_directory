@@ -31,6 +31,7 @@ new class extends Component
         'Cleaning & Maintenance',
         'IT & Tech Solutions',
         'Legal & Financial',
+        'Insurance',
         'Marketing & Media',
         'Education & Instruction',
         'Travel & Lodging',
@@ -169,6 +170,12 @@ new class extends Component
         </div>
 
         <div class="flex items-center space-x-3">
+            @if ($category !== 'All' || trim($search) !== '' || trim($location) !== '')
+                <button type="button" wire:click="resetFilters"
+                        class="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-slate-900 transition">
+                    <i class="fa-solid fa-xmark mr-1"></i> Clear Filters
+                </button>
+            @endif
             <label for="sort-select" class="text-xs font-semibold text-slate-500">Sort By:</label>
             <select id="sort-select" wire:model.live="sortVal" class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 <option value="featured">Featured First</option>

@@ -9,7 +9,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class StripeWebhookController extends CashierWebhookController
 {
-    protected function handleCustomerSubscriptionCreated(array $payload)
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function handleCustomerSubscriptionCreated(array $payload): Response
     {
         $response = parent::handleCustomerSubscriptionCreated($payload);
         $this->syncBusiness($payload['data']['object']);
@@ -17,7 +20,10 @@ class StripeWebhookController extends CashierWebhookController
         return $response;
     }
 
-    protected function handleCustomerSubscriptionUpdated(array $payload)
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function handleCustomerSubscriptionUpdated(array $payload): Response
     {
         $response = parent::handleCustomerSubscriptionUpdated($payload);
         $this->syncBusiness($payload['data']['object']);
@@ -25,11 +31,14 @@ class StripeWebhookController extends CashierWebhookController
         return $response;
     }
 
-    protected function handleCustomerSubscriptionDeleted(array $payload)
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function handleCustomerSubscriptionDeleted(array $payload): Response
     {
         $response = parent::handleCustomerSubscriptionDeleted($payload);
 
-        if ($business = $this->getUserByStripeId($payload['data']['object']['customer'] ?? null)) {
+        if ($business = $this->findBusinessByStripeId($payload['data']['object']['customer'] ?? null)) {
             $business->update([
                 'subscription_status' => 'canceled',
                 'subscription_tier' => 'free',
@@ -41,9 +50,12 @@ class StripeWebhookController extends CashierWebhookController
         return $response;
     }
 
-    protected function handleInvoicePaymentFailed(array $payload)
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function handleInvoicePaymentFailed(array $payload): Response
     {
-        if ($business = $this->getUserByStripeId($payload['data']['object']['customer'] ?? null)) {
+        if ($business = $this->findBusinessByStripeId($payload['data']['object']['customer'] ?? null)) {
             $business->update(['subscription_status' => 'past_due']);
 
             Log::warning("Payment failed for business #{$business->id}. Set status to past_due.");
@@ -52,12 +64,15 @@ class StripeWebhookController extends CashierWebhookController
         return $this->successMethod();
     }
 
-    protected function handleCheckoutSessionCompleted(array $payload)
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function handleCheckoutSessionCompleted(array $payload): Response
     {
         $object = $payload['data']['object'];
 
         if (($object['mode'] ?? null) === 'subscription'
-            && ($business = $this->getUserByStripeId($object['customer'] ?? null))) {
+            && ($business = $this->findBusinessByStripeId($object['customer'] ?? null))) {
             $business->update(['subscription_status' => 'active']);
         }
 
@@ -67,10 +82,12 @@ class StripeWebhookController extends CashierWebhookController
     /**
      * Mirror the Stripe subscription onto the business's tier columns.
      */
+    /**
+     * @param  array<string, mixed>  $subscription
+     */
     protected function syncBusiness(array $subscription): void
     {
-        /** @var Business|null $business */
-        $business = $this->getUserByStripeId($subscription['customer'] ?? null);
+        $business = $this->findBusinessByStripeId($subscription['customer'] ?? null);
 
         if (! $business) {
             return;
@@ -118,5 +135,14 @@ class StripeWebhookController extends CashierWebhookController
         }
 
         return null;
+    }
+
+    private function findBusinessByStripeId(mixed $stripeId): ?Business
+    {
+        if (! is_string($stripeId) || blank($stripeId)) {
+            return null;
+        }
+
+        return Business::query()->where('stripe_id', $stripeId)->first();
     }
 }

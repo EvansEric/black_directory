@@ -113,7 +113,21 @@ class extends Component
 
     {{-- Main Content --}}
     <main class="mx-auto w-full max-w-7xl grow px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <livewire:business-list />
+        <div class="grid grid-cols-1 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_18rem]">
+            <livewire:business-list />
+
+            <aside class="w-full xl:sticky xl:top-24" aria-label="Advertisement">
+                <h2 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Advertisement</h2>
+                <div
+                    data-ad-slot="directory-sidebar"
+                    class="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center xl:min-h-[37.5rem]"
+                >
+                    <i class="fa-solid fa-rectangle-ad mb-4 text-3xl text-amber-500" aria-hidden="true"></i>
+                    <p class="font-semibold text-slate-700">Your ad could be here</p>
+                    <p class="mt-2 text-xs leading-relaxed text-slate-500">A dedicated space to reach people supporting local businesses.</p>
+                </div>
+            </aside>
+        </div>
     </main>
 
     <x-footer />

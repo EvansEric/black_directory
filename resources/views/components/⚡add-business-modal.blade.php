@@ -14,7 +14,8 @@ new class extends Component
 
     public string $name = '';
     public string $category = 'Dining & Food';
-    public string $location = '';
+    public string $city = '';
+    public string $state = '';
     public string $address = '';
     public string $zip = '';
     public string $phone = '';
@@ -29,7 +30,8 @@ new class extends Component
         return [
             'name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string'],
-            'location' => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:100'],
+            'state' => ['required', 'string', 'size:2', 'alpha'],
             'address' => ['nullable', 'string', 'max:255'],
             'zip' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
@@ -48,7 +50,15 @@ new class extends Component
             return;
         }
 
+        if (! $this->editingBusinessId && ! SubscriptionGating::canAddBusiness(Auth::user())) {
+            $this->addError('name', $this->limitMessage());
+
+            return;
+        }
+
         $data = $this->validate();
+        $data['state'] = strtoupper($data['state']);
+        $data['location'] = trim($data['city']).', '.$data['state'];
         $data['tags'] = collect(explode(',', $data['tags'] ?? ''))
             ->map(fn (string $tag): string => trim($tag))
             ->filter()
@@ -132,7 +142,9 @@ new class extends Component
         $this->editingBusinessId = $business->id;
         $this->name = $business->name;
         $this->category = $business->category;
-        $this->location = $business->location;
+        [$fallbackCity, $fallbackState] = array_pad(array_map('trim', explode(',', (string) $business->location, 2)), 2, '');
+        $this->city = $business->city ?? $fallbackCity;
+        $this->state = $business->state ?? strtoupper(substr($fallbackState, 0, 2));
         $this->address = $business->address ?? '';
         $this->zip = $business->zip ?? '';
         $this->phone = $business->phone ?? '';
@@ -145,7 +157,7 @@ new class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['name', 'location', 'address', 'zip', 'phone', 'website', 'tags', 'image', 'description', 'editingBusinessId']);
+        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'tags', 'image', 'description', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
     }
@@ -153,6 +165,20 @@ new class extends Component
     public function canEditWebsite(): bool
     {
         return SubscriptionGating::canAccessCustomUrl($this->currentBusiness());
+    }
+
+    public function limitMessage(): string
+    {
+        $limit = SubscriptionGating::businessLimit(Auth::user());
+
+        return "Your plan allows {$limit} business ".($limit === 1 ? 'listing' : 'listings').'. Upgrade to add more.';
+    }
+
+    public function atBusinessLimit(): bool
+    {
+        return ! $this->editingBusinessId
+            && Auth::check()
+            && ! SubscriptionGating::canAddBusiness(Auth::user());
     }
 
     public function canEditLogo(): bool
@@ -178,10 +204,11 @@ new class extends Component
     x-transition:leave="transition ease-in duration-200"
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0"
-    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
     style="display: none;"
     @keydown.escape.window="open = false"
 >
+    <div class="flex min-h-full items-center justify-center p-4">
     <div @click.away="open = false" class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative">
         <button @click="open = false" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
             <i class="fa-solid fa-xmark text-xl"></i>
@@ -193,6 +220,12 @@ new class extends Component
         </div>
 
         <form wire:submit="save" class="space-y-4">
+            @if ($this->atBusinessLimit())
+                <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3.5 py-2.5">
+                    {{ $this->limitMessage() }}
+                    Standard includes 1 listing, Pro up to 5, and Spotlight is unlimited.
+                </div>
+            @endif
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Business Name *</label>
                 <input type="text" wire:model="name" placeholder="e.g. Harmony Organic Cafe"
@@ -217,6 +250,7 @@ new class extends Component
                         <option value="Cleaning & Maintenance">Cleaning & Maintenance</option>
                         <option value="IT & Tech Solutions">IT & Tech Solutions</option>
                         <option value="Legal & Financial">Legal & Financial</option>
+                        <option value="Insurance">Insurance</option>
                         <option value="Marketing & Media">Marketing & Media</option>
                         <option value="Education & Instruction">Education & Instruction</option>
                         <option value="Travel & Lodging">Travel & Lodging</option>
@@ -225,11 +259,24 @@ new class extends Component
                         <option value="Non-Profit & Community">Non-Profit & Community</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">City, State *</label>
-                    <input type="text" wire:model="location" placeholder="e.g. Atlanta, GA"
-                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                    @error('location') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">City *</label>
+                        <input type="text" wire:model="city" placeholder="e.g. Atlanta"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        @error('city') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">State *</label>
+                        <select wire:model="state"
+                                class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            <option value="">--</option>
+                            @foreach (['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'] as $abbr)
+                                <option value="{{ $abbr }}">{{ $abbr }}</option>
+                            @endforeach
+                        </select>
+                        @error('state') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
                 </div>
             </div>
 
@@ -311,5 +358,6 @@ new class extends Component
                 </button>
             </div>
         </form>
+    </div>
     </div>
 </div>

@@ -28,6 +28,7 @@ class BusinessSeeder extends Seeder
             'Cleaning & Maintenance',
             'IT & Tech Solutions',
             'Legal & Financial',
+            'Insurance',
             'Marketing & Media',
             'Education & Instruction',
             'Travel & Lodging',

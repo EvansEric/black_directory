@@ -30,6 +30,6 @@
         </div>
     </div>
     <div class="mx-auto border-t border-slate-800 px-4 pt-6 text-center text-xs sm:px-6 md:text-left lg:px-8">
-        <p class="mx-auto max-w-7xl">&copy; {{ date('Y') }} Noir Business Directory.</p>
+        <p class="mx-auto max-w-7xl">&copy; {{ date('Y') }} Noir Business Directory | All rights reserved.</p>
     </div>
 </footer>

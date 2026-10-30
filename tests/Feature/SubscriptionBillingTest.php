@@ -169,7 +169,19 @@ test('subscription checkout and cancellation routes work', function () {
     // Pricing endpoint
     $this->getJson('/subscriptions/pricing')
         ->assertOk()
-        ->assertJsonStructure(['tiers']);
+        ->assertJsonPath('tiers.free.monthly_price', 0)
+        ->assertJsonPath('tiers.standard.monthly_price', 4.99)
+        ->assertJsonPath('tiers.standard.annual_price', 47.90)
+        ->assertJsonPath('tiers.pro.monthly_price', 10.99)
+        ->assertJsonPath('tiers.pro.annual_price', 105.50)
+        ->assertJsonMissingPath('tiers.spotlight');
+
+    $this->get(route('pricing'))
+        ->assertOk()
+        ->assertSee('$4.99')
+        ->assertSee('$47.90/year')
+        ->assertSee('$10.99')
+        ->assertSee('$105.50/year');
 
     // Checkout must not grant access when Stripe is not configured.
     $response = $this->postJson('/subscriptions/checkout', [
@@ -181,12 +193,59 @@ test('subscription checkout and cancellation routes work', function () {
     $response->assertStatus(503);
     expect($business->fresh()->subscription_tier)->toBe('free');
 
+    $business->update([
+        'subscription_tier' => 'pro',
+        'subscription_status' => 'active',
+        'billing_cycle' => 'annual',
+    ]);
+
+    $this->postJson('/subscriptions/checkout', [
+        'business_id' => $business->id,
+        'tier' => 'free',
+        'billing_cycle' => 'monthly',
+    ])
+        ->assertOk()
+        ->assertJsonPath('tier', 'free');
+
+    expect($business->fresh()->subscription_tier)->toBe('free')
+        ->and($business->fresh()->billing_cycle)->toBeNull()
+        ->and($business->fresh()->subscription_status)->toBe('active');
+
     // Cancel request
     $cancelResponse = $this->postJson('/subscriptions/cancel', [
         'business_id' => $business->id,
     ]);
 
     $cancelResponse->assertOk();
+    expect($business->fresh()->subscription_status)->toBe('canceled');
+});
+
+test('subscription cancellation requires the authenticated business owner', function () {
+    $owner = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $business = Business::create([
+        'user_id' => $owner->id,
+        'name' => 'Owner-Only Subscription',
+        'category' => 'Dining & Food',
+        'location' => 'Atlanta, GA',
+        'description' => 'Test desc',
+        'subscription_tier' => 'pro',
+        'subscription_status' => 'active',
+    ]);
+
+    $this->postJson('/subscriptions/cancel', ['business_id' => $business->id])
+        ->assertForbidden();
+
+    $this->actingAs($otherUser)
+        ->postJson('/subscriptions/cancel', ['business_id' => $business->id])
+        ->assertForbidden();
+
+    expect($business->fresh()->subscription_status)->toBe('active');
+
+    $this->actingAs($owner)
+        ->postJson('/subscriptions/cancel', ['business_id' => $business->id])
+        ->assertOk();
+
     expect($business->fresh()->subscription_status)->toBe('canceled');
 });
 

@@ -78,7 +78,7 @@ class extends Component {};
                     </article>
                 </div>
 
-                <div class="mt-12 flex flex-col gap-5 border-t border-slate-200 pt-8 sm:flex-row sm:items-center sm:justify-between">
+                <div class="mt-12 flex flex-col gap-5 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between pt-8">
                     <p class="max-w-2xl font-serif text-2xl font-bold leading-snug text-slate-900">Make your next search a way to show support.</p>
                     <button
                         x-data

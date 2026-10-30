@@ -11,29 +11,29 @@ class extends Component
 {
     public array $plans = [
         [
+            'key' => 'free',
+            'name' => 'Free',
+            'description' => 'Get your business listed in the directory at no cost.',
+            'monthly' => '0.00',
+            'annual' => null,
+            'features' => ['1 Business Listing', 'Business Profile & Directory Placement', 'Business Contact Information'],
+        ],
+        [
             'key' => 'standard',
-            'name' => 'Basic / Standard',
+            'name' => 'Standard',
             'description' => 'Essential custom branding for growing local businesses.',
-            'monthly' => '9.99',
-            'annual' => '95.90',
-            'features' => ['Custom Website Link', 'Logo & Business Image', 'Rich Business Description'],
+            'monthly' => '4.99',
+            'annual' => '47.90',
+            'features' => ['1 Business Listing', 'Custom Website Link', 'Logo & Business Image', 'Rich Business Description'],
         ],
         [
             'key' => 'pro',
-            'name' => 'Featured / Pro',
+            'name' => 'Pro',
             'description' => 'Priority placement and direct customer lead forms.',
-            'monthly' => '19.99',
-            'annual' => '191.90',
-            'features' => ['Priority Search Placement', 'Lead Generation Forms', 'All Basic Features'],
+            'monthly' => '10.99',
+            'annual' => '105.50',
+            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Lead Generation Forms', 'All Standard Features'],
             'popular' => true,
-        ],
-        [
-            'key' => 'spotlight',
-            'name' => 'Homepage Spotlight',
-            'description' => 'Maximum reach with top banner and homepage rotation.',
-            'monthly' => '99.99',
-            'annual' => '959.90',
-            'features' => ['Top Banner & Homepage Rotation', 'Priority Placement', 'Lead Generation Forms', 'All Pro Features'],
         ],
     ];
 }; ?>
@@ -68,9 +68,13 @@ class extends Component
                             <h2 class="mb-1 text-lg font-bold text-slate-900">{{ $plan['name'] }}</h2>
                             <p class="mb-5 text-xs text-slate-500">{{ $plan['description'] }}</p>
                             <div class="mb-5">
-                                <span class="text-4xl font-bold text-slate-900">${{ $plan['monthly'] }}</span>
-                                <span class="text-xs text-slate-500">/month</span>
-                                <span class="mt-1 block text-xs text-slate-400">or ${{ $plan['annual'] }}/year</span>
+                                @if ($plan['key'] === 'free')
+                                    <span class="text-4xl font-bold text-slate-900">Free</span>
+                                @else
+                                    <span class="text-4xl font-bold text-slate-900">${{ $plan['monthly'] }}</span>
+                                    <span class="text-xs text-slate-500">/month</span>
+                                    <span class="mt-1 block text-xs text-slate-400">or ${{ $plan['annual'] }}/year</span>
+                                @endif
                             </div>
                             <ul class="mb-8 space-y-3 text-xs text-slate-600">
                                 @foreach ($plan['features'] as $feature)

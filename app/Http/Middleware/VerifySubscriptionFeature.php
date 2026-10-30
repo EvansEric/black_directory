@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Business;
+use App\Models\User;
 use App\Services\SubscriptionGating;
 use Closure;
 use Illuminate\Http\Request;
@@ -23,21 +24,20 @@ class VerifySubscriptionFeature
         if ($listingId instanceof Business) {
             $listing = $listingId;
         } elseif (is_numeric($listingId)) {
-            $listing = Business::find($listingId);
+            $listing = Business::query()->find($listingId);
         }
 
-        if (! $listing) {
-            if ($request->user()) {
-                $listing = $request->user()->businesses()->first();
-            }
+        $user = $request->user();
+        if (! $listing && $user instanceof User) {
+            $listing = $user->businesses()->first();
         }
 
-        if (! $listing || ! SubscriptionGating::verifyFeature($listing, $feature)) {
+        if (! $listing instanceof Business || ! SubscriptionGating::verifyFeature($listing, $feature)) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'message' => "Your subscription tier does not have access to the '{$feature}' feature.",
                     'required_feature' => $feature,
-                    'current_tier' => $listing ? $listing->subscription_tier : 'free',
+                    'current_tier' => $listing instanceof Business ? $listing->subscription_tier : 'free',
                 ], 403);
             }
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Business;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 
 class SubscriptionGating
@@ -15,35 +16,51 @@ class SubscriptionGating
 
     public const TIER_SPOTLIGHT = 'spotlight';
 
+    /** Maximum businesses an owner may list, by their highest active tier (null = unlimited). */
+    public const BUSINESS_LIMITS = [
+        self::TIER_FREE => 1,
+        self::TIER_STANDARD => 1,
+        self::TIER_PRO => 5,
+        self::TIER_SPOTLIGHT => null,
+    ];
+
     public const TIERS = [
+        self::TIER_FREE => [
+            'key' => self::TIER_FREE,
+            'name' => 'Free',
+            'monthly_price' => 0,
+            'annual_price' => 0,
+            'features' => ['1 Business Listing', 'Business Profile & Directory Placement', 'Business Contact Information'],
+            'priority' => 0,
+        ],
         self::TIER_STANDARD => [
             'key' => self::TIER_STANDARD,
-            'name' => 'Basic / Standard',
-            'monthly_price' => 9.99,
-            'annual_price' => 95.90,
+            'name' => 'Standard',
+            'monthly_price' => 4.99,
+            'annual_price' => 47.90,
             'stripe_monthly_price_id' => 'price_standard_monthly',
             'stripe_annual_price_id' => 'price_standard_annual',
-            'features' => ['Custom Link', 'Logo Upload', 'Business Description'],
+            'features' => ['1 Business Listing', 'Custom Link', 'Logo Upload', 'Business Description'],
             'priority' => 1,
         ],
         self::TIER_PRO => [
             'key' => self::TIER_PRO,
-            'name' => 'Featured / Pro',
-            'monthly_price' => 19.99,
-            'annual_price' => 191.90,
+            'name' => 'Pro',
+            'monthly_price' => 10.99,
+            'annual_price' => 105.50,
             'stripe_monthly_price_id' => 'price_pro_monthly',
             'stripe_annual_price_id' => 'price_pro_annual',
-            'features' => ['Priority Search Placement', 'Lead Generation Forms', 'All Basic Features'],
+            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Lead Generation Forms', 'All Standard Features'],
             'priority' => 2,
         ],
         self::TIER_SPOTLIGHT => [
             'key' => self::TIER_SPOTLIGHT,
             'name' => 'Homepage Spotlight',
-            'monthly_price' => 99.99,
-            'annual_price' => 959.90,
+            'monthly_price' => 39.98,
+            'annual_price' => 383.80,
             'stripe_monthly_price_id' => 'price_spotlight_monthly',
             'stripe_annual_price_id' => 'price_spotlight_annual',
-            'features' => ['Top Banner & Homepage Rotation Slots', 'Priority Search Placement', 'Lead Generation Forms', 'All Featured Features'],
+            'features' => ['Unlimited Business Listings', 'Top Banner & Homepage Rotation Slots', 'Everything in Pro'],
             'priority' => 3,
         ],
     ];
@@ -177,5 +194,39 @@ class SubscriptionGating
             'priority_search', 'priority' => self::canAccessPrioritySearch($listing),
             default => false,
         };
+    }
+
+    /**
+     * The owner's plan is the highest effective tier across their listings.
+     */
+    public static function getOwnerTier(User $user): string
+    {
+        $best = self::TIER_FREE;
+        $rank = [self::TIER_FREE => 0, self::TIER_STANDARD => 1, self::TIER_PRO => 2, self::TIER_SPOTLIGHT => 3];
+
+        foreach ($user->businesses()->get() as $business) {
+            $tier = self::getEffectiveTier($business);
+
+            if (($rank[$tier] ?? 0) > $rank[$best]) {
+                $best = $tier;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * Maximum number of listings the user may own (null = unlimited).
+     */
+    public static function businessLimit(User $user): ?int
+    {
+        return self::BUSINESS_LIMITS[self::getOwnerTier($user)] ?? 1;
+    }
+
+    public static function canAddBusiness(User $user): bool
+    {
+        $limit = self::businessLimit($user);
+
+        return $limit === null || $user->businesses()->count() < $limit;
     }
 }

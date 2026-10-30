@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Business;
+use App\Services\BusinessSubscriptionManager;
 use App\Services\SubscriptionGating;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -16,14 +17,14 @@ new class extends Component
     #[On('open-subscription-modal')]
     public function openSubscriptionModal(?int $businessId = null, ?string $tier = null): void
     {
-        if ($tier && in_array($tier, ['standard', 'pro', 'spotlight'], true)) {
+        if ($tier && in_array($tier, ['free', 'standard', 'pro'], true)) {
             $this->selectedTier = $tier;
         }
 
         if ($businessId) {
             $this->businessId = $businessId;
             $this->business = Business::find($businessId);
-            if ($this->business && $this->business->subscription_tier !== 'free') {
+            if ($this->business && in_array($this->business->subscription_tier, ['standard', 'pro'], true)) {
                 $this->selectedTier = $this->business->subscription_tier;
                 $this->billingCycle = $this->business->billing_cycle ?? 'monthly';
             }
@@ -40,7 +41,9 @@ new class extends Component
 
     public function selectTier(string $tier): void
     {
-        $this->selectedTier = $tier;
+        if (in_array($tier, ['free', 'standard', 'pro'], true)) {
+            $this->selectedTier = $tier;
+        }
     }
 
     public function selectCycle(string $cycle): void
@@ -48,7 +51,7 @@ new class extends Component
         $this->billingCycle = $cycle;
     }
 
-    public function checkout(): mixed
+    public function checkout(BusinessSubscriptionManager $subscriptions): mixed
     {
         if (! Auth::check()) {
             $this->dispatch('open-auth-modal');
@@ -62,28 +65,26 @@ new class extends Component
             return null;
         }
 
-        $controller = new \App\Http\Controllers\SubscriptionController();
-        $request = new \Illuminate\Http\Request([
-            'business_id' => $this->businessId,
-            'tier' => $this->selectedTier,
-            'billing_cycle' => $this->billingCycle,
+        $this->validate([
+            'selectedTier' => ['required', 'in:free,standard,pro'],
+            'billingCycle' => ['required', 'in:monthly,annual'],
         ]);
 
-        $response = $controller->checkout($request);
+        $business = Business::query()->findOrFail($this->businessId);
+        abort_unless(Auth::id() === $business->user_id, 403, 'Unauthorized to manage subscription for this listing.');
 
-        if ($response instanceof \Illuminate\Http\RedirectResponse) {
-            return redirect($response->getTargetUrl());
+        if ($this->selectedTier === SubscriptionGating::TIER_FREE) {
+            $subscriptions->selectFreePlan($business);
+
+            $this->dispatch('business-updated');
+            $this->dispatch('close-subscription-modal');
+
+            return null;
         }
 
-        $data = json_decode($response->getContent(), true);
-        if (isset($data['checkout_url'])) {
-            return redirect($data['checkout_url']);
-        }
+        $checkout = $subscriptions->createCheckout($business, $this->selectedTier, $this->billingCycle);
 
-        $this->dispatch('business-updated');
-        $this->dispatch('close-subscription-modal');
-
-        return null;
+        return redirect()->away($checkout['url'], 303);
     }
 }; ?>
 
@@ -116,6 +117,7 @@ new class extends Component
         </div>
 
         {{-- Billing Cycle Toggle --}}
+        @if ($selectedTier !== 'free')
         <div class="flex justify-center mb-8">
             <div class="bg-slate-100 p-1 rounded-xl flex items-center space-x-1 border border-slate-200">
                 <button
@@ -135,24 +137,48 @@ new class extends Component
                 </button>
             </div>
         </div>
+        @endif
 
         {{-- Pricing Cards Grid --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {{-- Free Tier --}}
+            <div
+                wire:click="selectTier('free')"
+                class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'free' ? 'border-amber-500 bg-amber-50/30 shadow-lg' : 'border-slate-200 hover:border-slate-300' }}"
+            >
+                <div>
+                    <h4 class="font-bold text-slate-900 text-base mb-1">Free</h4>
+                    <p class="text-xs text-slate-500 mb-4">Get your business listed in the directory at no cost.</p>
+                    <div class="mb-4">
+                        <span class="text-3xl font-bold text-slate-900">Free</span>
+                    </div>
+                    <ul class="space-y-2.5 text-xs text-slate-600 mb-6">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-500 text-xs"></i><span>1 Business Listing</span></li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-500 text-xs"></i><span>Business Profile & Directory Placement</span></li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-500 text-xs"></i><span>Business Contact Information</span></li>
+                    </ul>
+                </div>
+            </div>
+
             {{-- Standard Tier --}}
             <div
                 wire:click="selectTier('standard')"
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'standard' ? 'border-amber-500 bg-amber-50/30 shadow-lg' : 'border-slate-200 hover:border-slate-300' }}"
             >
                 <div>
-                    <h4 class="font-bold text-slate-900 text-base mb-1">Basic / Standard</h4>
+                    <h4 class="font-bold text-slate-900 text-base mb-1">Standard</h4>
                     <p class="text-xs text-slate-500 mb-4">Essential custom branding for growing local businesses.</p>
 
                     <div class="mb-4">
-                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '95.90' : '9.99' }}</span>
+                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '47.90' : '4.99' }}</span>
                         <span class="text-xs text-slate-500">/{{ $billingCycle === 'annual' ? 'year' : 'month' }}</span>
                     </div>
 
                     <ul class="space-y-2.5 text-xs text-slate-600 mb-6">
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-amber-500 text-xs"></i>
+                            <span>1 Business Listing</span>
+                        </li>
                         <li class="flex items-center gap-2">
                             <i class="fa-solid fa-check text-amber-500 text-xs"></i>
                             <span>Custom Website Link</span>
@@ -179,15 +205,19 @@ new class extends Component
                 </div>
 
                 <div>
-                    <h4 class="font-bold text-slate-900 text-base mb-1">Featured / Pro</h4>
+                    <h4 class="font-bold text-slate-900 text-base mb-1">Pro</h4>
                     <p class="text-xs text-slate-500 mb-4">Priority placement & direct customer lead forms.</p>
 
                     <div class="mb-4">
-                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '191.90' : '19.99' }}</span>
+                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '105.50' : '10.99' }}</span>
                         <span class="text-xs text-slate-500">/{{ $billingCycle === 'annual' ? 'year' : 'month' }}</span>
                     </div>
 
                     <ul class="space-y-2.5 text-xs text-slate-600 mb-6">
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-amber-500 text-xs"></i>
+                            <span>Up to 5 Business Listings</span>
+                        </li>
                         <li class="flex items-center gap-2 font-semibold text-slate-800">
                             <i class="fa-solid fa-star text-amber-500 text-xs"></i>
                             <span>Priority Search Placement</span>
@@ -198,51 +228,17 @@ new class extends Component
                         </li>
                         <li class="flex items-center gap-2">
                             <i class="fa-solid fa-check text-amber-500 text-xs"></i>
-                            <span>All Basic Features</span>
+                            <span>All Standard Features</span>
                         </li>
                     </ul>
                 </div>
             </div>
 
-            {{-- Spotlight Tier --}}
-            <div
-                wire:click="selectTier('spotlight')"
-                class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'spotlight' ? 'border-amber-500 bg-amber-50/30 shadow-lg' : 'border-slate-200 hover:border-slate-300' }}"
-            >
-                <div>
-                    <h4 class="font-bold text-slate-900 text-base mb-1">Homepage Spotlight</h4>
-                    <p class="text-xs text-slate-500 mb-4">Maximum reach with top banner & homepage rotation.</p>
-
-                    <div class="mb-4">
-                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '959.90' : '99.99' }}</span>
-                        <span class="text-xs text-slate-500">/{{ $billingCycle === 'annual' ? 'year' : 'month' }}</span>
-                    </div>
-
-                    <ul class="space-y-2.5 text-xs text-slate-600 mb-6">
-                        <li class="flex items-center gap-2 font-semibold text-slate-900">
-                            <i class="fa-solid fa-crown text-amber-500 text-xs"></i>
-                            <span>Top Banner & Homepage Rotation</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <i class="fa-solid fa-check text-amber-500 text-xs"></i>
-                            <span>Priority Placement</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <i class="fa-solid fa-check text-amber-500 text-xs"></i>
-                            <span>Lead Generation Forms</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <i class="fa-solid fa-check text-amber-500 text-xs"></i>
-                            <span>All Pro Features</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
         </div>
 
         <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="text-xs text-slate-500">
-                <span>Secure payment powered by Stripe. Cancel anytime.</span>
+                <span>{{ $selectedTier === 'free' ? 'No payment required for the Free plan.' : 'Secure payment powered by Stripe. Pay with card, Apple Pay, Google Pay, or Link. Cancel anytime.' }}</span>
             </div>
 
             <button
@@ -251,7 +247,7 @@ new class extends Component
                 class="w-full sm:w-auto px-8 py-3.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-amber-900/20"
                 wire:loading.attr="disabled" wire:target="checkout"
             >
-                <span wire:loading.remove wire:target="checkout">Proceed to Checkout (${{ match($selectedTier) { 'spotlight' => ($billingCycle === 'annual' ? '959.90/yr' : '99.99/mo'), 'pro' => ($billingCycle === 'annual' ? '191.90/yr' : '19.99/mo'), default => ($billingCycle === 'annual' ? '95.90/yr' : '9.99/mo') } }})</span>
+                <span wire:loading.remove wire:target="checkout">{{ $selectedTier === 'free' ? 'Choose Free Plan' : 'Proceed to Checkout ($'.($selectedTier === 'pro' ? ($billingCycle === 'annual' ? '105.50/yr' : '10.99/mo') : ($billingCycle === 'annual' ? '47.90/yr' : '4.99/mo')).')' }}</span>
                 <span wire:loading wire:target="checkout">Preparing Checkout...</span>
             </button>
         </div>

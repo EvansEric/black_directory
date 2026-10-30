@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -13,9 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
-/**use App\Models\Business;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
+/**
  * @property int $id
  * @property string $name
  * @property string $email
@@ -57,6 +54,9 @@ class User extends Authenticatable
             : $initials;
     }
 
+    /**
+     * @return HasMany<Business, $this>
+     */
     public function businesses(): HasMany
     {
         return $this->hasMany(Business::class);

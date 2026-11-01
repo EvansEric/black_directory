@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\StripeWebhookController;
@@ -25,6 +26,9 @@ Route::post('/listings/{business}/leads', [LeadController::class, 'store'])
     ->name('listings.leads.store');
 
 Route::redirect('/forgot-password', '/')->name('password.request');
+
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
 Route::get('/reset-password/{token}', [PasswordResetController::class, 'create'])->name('password.reset');
 Route::post('/reset-password', [PasswordResetController::class, 'store'])->name('password.update');

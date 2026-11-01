@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Business;
 use Illuminate\Support\Facades\Log;
+use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Subscription;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class BusinessSubscriptionManager
@@ -14,7 +16,7 @@ class BusinessSubscriptionManager
 
         if ($subscription && $subscription->valid()) {
             try {
-                $subscription->cancelNow();
+                $subscription->cancel();
             } catch (\Throwable $exception) {
                 Log::error('Stripe subscription cancellation error: '.$exception->getMessage(), [
                     'business_id' => $business->id,
@@ -23,8 +25,15 @@ class BusinessSubscriptionManager
 
                 throw new HttpException(502, 'Stripe could not cancel the subscription. Please try again.', $exception);
             }
-        }
 
+            // Keep the paid tier until the period the customer already paid for ends.
+            $business->update([
+                'subscription_status' => 'canceled',
+                'subscription_ends_at' => $subscription->ends_at,
+            ]);
+
+            return;
+        }
         $business->update([
             'subscription_tier' => SubscriptionGating::TIER_FREE,
             'subscription_status' => 'active',
@@ -59,7 +68,7 @@ class BusinessSubscriptionManager
             $checkout = $business->newSubscription('default', $priceId)
                 ->withMetadata($metadata)
                 ->checkout([
-                    'success_url' => url('/?subscription=success&business_id='.$business->id),
+                    'success_url' => route('subscriptions.success', ['business' => $business->id]).'?session_id={CHECKOUT_SESSION_ID}',
                     'cancel_url' => url('/?subscription=canceled&business_id='.$business->id),
                     'metadata' => $metadata,
                     'payment_method_types' => ['card', 'link'],
@@ -85,13 +94,129 @@ class BusinessSubscriptionManager
         }
     }
 
+    /**
+     * Mirror a Stripe subscription object onto the business's tier columns.
+     *
+     * @param  array<string, mixed>  $subscription
+     */
+    public function syncFromStripeSubscription(Business $business, array $subscription): void
+    {
+        $item = $subscription['items']['data'][0] ?? [];
+        [$tier, $cycle] = $this->resolvePlan($item['price']['id'] ?? null)
+            ?? [$subscription['metadata']['tier'] ?? null, $subscription['metadata']['billing_cycle'] ?? null];
+
+        $data = ['subscription_status' => ($subscription['cancel_at_period_end'] ?? false) ? 'canceled' : ($subscription['status'] ?? 'active')];
+
+        if ($tier) {
+            $data['subscription_tier'] = $tier;
+        }
+
+        if ($cycle) {
+            $data['billing_cycle'] = $cycle;
+        }
+
+        $periodEnd = $subscription['current_period_end'] ?? $item['current_period_end'] ?? null;
+        if ($periodEnd) {
+            $data['subscription_ends_at'] = date('Y-m-d H:i:s', $periodEnd);
+        }
+
+        $business->update($data);
+
+        Log::info("Updated business #{$business->id} subscription to {$data['subscription_status']}, tier: {$business->subscription_tier}");
+    }
+
+    /**
+     * Confirm a completed Checkout Session with Stripe and sync the plan, so access
+     * does not depend on the webhook arriving first.
+     */
+    public function syncFromCheckoutSession(Business $business, string $sessionId): bool
+    {
+        try {
+            $session = Cashier::stripe()->checkout->sessions->retrieve($sessionId, [
+                'expand' => ['subscription'],
+            ])->toArray();
+        } catch (\Throwable $exception) {
+            Log::error('Stripe checkout session lookup failed: '.$exception->getMessage(), ['business_id' => $business->id]);
+
+            return false;
+        }
+
+        $subscription = $session['subscription'] ?? null;
+
+        if (($session['metadata']['business_id'] ?? null) !== (string) $business->id
+            || ($session['mode'] ?? null) !== 'subscription'
+            || ! is_array($subscription)) {
+            return false;
+        }
+
+        $this->recordCashierSubscription($business, $subscription);
+        $this->syncFromStripeSubscription($business, $subscription);
+
+        return true;
+    }
+
+    /**
+     * Cashier normally records this from the webhook; do it here too so the
+     * checkout return path leaves the business with a cancellable subscription.
+     *
+     * @param  array<string, mixed>  $subscription
+     */
+    public function recordCashierSubscription(Business $business, array $subscription): void
+    {
+        $item = $subscription['items']['data'][0] ?? [];
+        $priceId = $item['price']['id'] ?? null;
+
+        $record = Subscription::query()->updateOrCreate(
+            ['stripe_id' => $subscription['id']],
+            [
+                'business_id' => $business->getKey(),
+                'type' => 'default',
+                'stripe_status' => $subscription['status'] ?? 'active',
+                'stripe_price' => $priceId,
+                'quantity' => $item['quantity'] ?? 1,
+                'ends_at' => null,
+            ],
+        );
+
+        if (isset($item['id'])) {
+            $record->items()->updateOrCreate(
+                ['stripe_id' => $item['id']],
+                [
+                    'stripe_product' => $item['price']['product'] ?? null,
+                    'stripe_price' => $priceId,
+                    'quantity' => $item['quantity'] ?? 1,
+                ],
+            );
+        }
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    public function resolvePlan(?string $priceId): ?array
+    {
+        if (blank($priceId)) {
+            return null;
+        }
+
+        foreach (config('services.stripe.prices', []) as $tier => $cycles) {
+            foreach ($cycles as $cycle => $id) {
+                if ($id === $priceId) {
+                    return [$tier, $cycle];
+                }
+            }
+        }
+
+        return null;
+    }
+
     public function cancel(Business $business): Business
     {
         $subscription = $business->subscription('default');
 
         if ($subscription && $subscription->valid() && filled(config('cashier.secret'))) {
             try {
-                $subscription->cancelNow();
+                $subscription->cancel();
             } catch (\Throwable $exception) {
                 Log::error('Stripe cancellation error: '.$exception->getMessage(), [
                     'business_id' => $business->id,
@@ -99,6 +224,8 @@ class BusinessSubscriptionManager
 
                 throw new HttpException(502, 'Stripe could not cancel the subscription. Please try again.', $exception);
             }
+
+            $business->update(['subscription_ends_at' => $subscription->ends_at]);
         }
 
         $business->update(['subscription_status' => 'canceled']);

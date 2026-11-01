@@ -23,6 +23,13 @@ class extends Component
 <div>
     <livewire:navigation />
 
+    @if (session('status'))
+        <div x-data="{ show: true }" x-show="show" role="status" class="bg-amber-500 px-4 py-2 text-center text-sm font-semibold text-slate-950">
+            {{ session('status') }}
+            <button type="button" @click="show = false" class="ml-3 underline" aria-label="Dismiss">Dismiss</button>
+        </div>
+    @endif
+
     {{-- Hero Search Area --}}
     <section class="relative overflow-hidden border-b border-amber-900/10 bg-brand-50 py-12 text-slate-900 sm:py-16 lg:py-24">
         <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-amber-200/40 blur-3xl sm:h-96 sm:w-96"></div>
@@ -136,4 +143,5 @@ class extends Component
     <livewire:add-business-modal />
     <livewire:subscription-modal />
     <livewire:lead-form-modal />
+    <livewire:business-details-modal />
 </div>

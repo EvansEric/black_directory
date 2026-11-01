@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Controllers\StripeWebhookController;
 use App\Models\Business;
+use App\Services\GoogleMapsEmbed;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(CashierWebhookController::class, StripeWebhookController::class);
+        $this->app->bind(GoogleMapsEmbed::class, fn (): GoogleMapsEmbed => new GoogleMapsEmbed(config('services.google_maps.key')));
     }
 
     /**

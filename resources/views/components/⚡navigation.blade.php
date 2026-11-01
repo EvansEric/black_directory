@@ -1,18 +1,19 @@
 <?php
 
-use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
+use Livewire\Component;
 
 new class extends Component
 {
     public function logout(): void
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
 
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
+        Session::invalidate();
+        Session::regenerateToken();
 
-        $this->redirect('/', navigate: true);
+        $this->redirect('/');
     }
 }; ?>
 
@@ -39,14 +40,16 @@ new class extends Component
                 <nav class="hidden md:flex items-center gap-6 text-sm font-medium" x-data>
                     <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
                     <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
-                    <button
-                        @click="$store.favorites.showOnly = !$store.favorites.showOnly"
-                        :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
-                        class="transition-colors flex items-center space-x-1.5"
-                    >
-                        <i class="fa-solid fa-heart text-amber-500 text-xs"></i>
-                        <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
-                    </button>
+                    @auth
+                        <button
+                            @click="$store.favorites.showOnly = !$store.favorites.showOnly"
+                            :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                            class="transition-colors flex items-center space-x-1.5"
+                        >
+                            <i class="fa-solid fa-heart text-amber-500 text-xs"></i>
+                            <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
+                        </button>
+                    @endauth
                 </nav>
 
                 <button
@@ -85,7 +88,30 @@ new class extends Component
                                 <p class="text-xs font-semibold text-slate-900 truncate">{{ auth()->user()->name }}</p>
                                 <p class="text-[11px] text-slate-400 truncate">{{ auth()->user()->email }}</p>
                             </div>
+                            @php
+                                $planBusiness = \App\Services\SubscriptionGating::getOwnerPlanBusiness(auth()->user());
+                                $currentPlan = \App\Services\SubscriptionGating::TIERS[$planBusiness ? \App\Services\SubscriptionGating::getEffectiveTier($planBusiness) : 'free'];
+                                $planEnds = $planBusiness?->subscription_ends_at;
+                                $planEnding = $planBusiness && \App\Services\SubscriptionGating::isEnding($planBusiness);
+                            @endphp
+                            <a href="{{ route('pricing') }}" class="flex items-center justify-between px-4 py-2 border-b border-slate-100 hover:bg-slate-50 transition" data-current-plan>
+                                <span>
+                                    <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Current plan</span>
+                                    <span class="block text-xs font-bold text-amber-700">{{ $currentPlan['name'] }}</span>
+                                    @if ($planEnds && $planEnds->isFuture())
+                                        <span class="block text-[11px] {{ $planEnding ? 'text-red-600' : 'text-slate-500' }}" data-plan-time-left>
+                                            @if ($planEnding)
+                                                Ends {{ $planEnds->diffForHumans() }} &middot; then Free
+                                            @else
+                                                Renews {{ $planEnds->diffForHumans() }} ({{ $planEnds->diffInDays(now(), true) < 1 ? 'less than a day' : (int) ceil($planEnds->diffInDays(now(), true)).' days left' }})
+                                            @endif
+                                        </span>
+                                    @endif
+                                </span>
+                                <span class="text-[11px] font-semibold text-slate-500">{{ $currentPlan['key'] === 'free' ? 'Upgrade' : 'Manage' }} <i class="fa-solid fa-arrow-right text-[9px]"></i></span>
+                            </a>
                             <button
+                                type="button"
                                 wire:click="logout"
                                 wire:confirm="Are you sure you want to log out?"
                                 class="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition"
@@ -114,14 +140,16 @@ new class extends Component
         <nav class="flex flex-wrap items-center justify-center gap-3 pb-3 text-xs font-medium md:hidden" x-data>
             <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
             <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
-            <button
-                @click="$store.favorites.showOnly = !$store.favorites.showOnly"
-                :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
-                class="transition-colors flex items-center space-x-1.5"
-            >
-                <i class="fa-solid fa-heart text-amber-500 text-[10px]"></i>
-                <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
-            </button>
+            @auth
+                <button
+                    @click="$store.favorites.showOnly = !$store.favorites.showOnly"
+                    :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                    class="transition-colors flex items-center space-x-1.5"
+                >
+                    <i class="fa-solid fa-heart text-amber-500 text-[10px]"></i>
+                    <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
+                </button>
+            @endauth
         </nav>
     </div>
 </header>

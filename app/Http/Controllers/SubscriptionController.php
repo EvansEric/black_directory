@@ -66,6 +66,22 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Landing page after Stripe Checkout: confirm the session and sync the plan.
+     */
+    public function success(Request $request, Business $business, BusinessSubscriptionManager $subscriptions): RedirectResponse
+    {
+        abort_unless($request->user()?->getKey() === $business->user_id, 403);
+
+        $sessionId = $request->query('session_id');
+
+        if (is_string($sessionId) && $subscriptions->syncFromCheckoutSession($business, $sessionId)) {
+            return redirect('/')->with('status', 'Your plan has been upgraded.');
+        }
+
+        return redirect('/')->with('status', 'Payment received. Your plan will update shortly.');
+    }
+
+    /**
      * Cancel an existing subscription.
      */
     public function cancel(Request $request, BusinessSubscriptionManager $subscriptions): JsonResponse

@@ -13,6 +13,7 @@ Route::livewire('/mission', 'pages::mission')->name('mission');
 // Subscription Routes
 Route::get('/subscriptions/pricing', [SubscriptionController::class, 'pricing'])->name('subscriptions.pricing');
 Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])->name('subscriptions.checkout');
+Route::get('/subscriptions/success/{business}', [SubscriptionController::class, 'success'])->name('subscriptions.success');
 Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
 
 // Stripe webhooks (Cashier also serves them at /stripe/webhook)

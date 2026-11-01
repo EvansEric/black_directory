@@ -2,6 +2,8 @@
 
 use App\Models\Business;
 use App\Models\User;
+use App\Services\BusinessSubscriptionManager;
+use App\Services\SubscriptionGating;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -184,6 +186,8 @@ test('subscription checkout and cancellation routes work', function () {
         ->assertSee('$105.50/year');
 
     // Checkout must not grant access when Stripe is not configured.
+    config(['services.stripe.prices.pro.monthly' => null]);
+
     $response = $this->postJson('/subscriptions/checkout', [
         'business_id' => $business->id,
         'tier' => 'pro',
@@ -383,4 +387,73 @@ test('listings search and directory queries order results by tier priority', fun
         $pro->id,
         $spotlight->id,
     ]);
+});
+
+it('syncs the plan from a Stripe subscription object', function () {
+    config(['services.stripe.prices.standard.monthly' => 'price_test_standard']);
+
+    $owner = User::factory()->create();
+    $business = Business::create([
+        'user_id' => $owner->id,
+        'name' => 'Sync Co',
+        'category' => 'Retail',
+        'location' => 'Atlanta, GA',
+        'description' => 'Test listing.',
+    ]);
+
+    app(BusinessSubscriptionManager::class)->syncFromStripeSubscription($business, [
+        'status' => 'active',
+        'items' => ['data' => [['price' => ['id' => 'price_test_standard'], 'current_period_end' => now()->addMonth()->timestamp]]],
+    ]);
+
+    expect($business->fresh()->subscription_tier)->toBe('standard')
+        ->and($business->fresh()->billing_cycle)->toBe('monthly')
+        ->and(SubscriptionGating::getOwnerTier($owner))->toBe('standard');
+});
+
+it('only lets the listing owner use the checkout success page', function () {
+    $business = Business::create([
+        'user_id' => User::factory()->create()->id,
+        'name' => 'Owned Co',
+        'category' => 'Retail',
+        'location' => 'Atlanta, GA',
+        'description' => 'Test listing.',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('subscriptions.success', $business).'?session_id=cs_test')
+        ->assertForbidden();
+});
+
+it('shows time left on a paid plan and keeps it until a downgrade takes effect', function () {
+    $owner = User::factory()->create();
+    $business = Business::create([
+        'user_id' => $owner->id,
+        'name' => 'Paid Co',
+        'category' => 'Retail',
+        'location' => 'Atlanta, GA',
+        'description' => 'Test listing.',
+        'subscription_tier' => 'standard',
+        'subscription_status' => 'active',
+        'subscription_ends_at' => now()->addDays(20),
+    ]);
+
+    $this->actingAs($owner)->get(route('home'))
+        ->assertSee('Standard')
+        ->assertSee('data-plan-time-left', false)
+        ->assertSee('Renews');
+
+    // Downgrade requested: status canceled, but access continues until the period ends.
+    $business->update(['subscription_status' => 'canceled']);
+
+    expect(SubscriptionGating::getOwnerTier($owner))->toBe('standard');
+
+    $this->actingAs($owner)->get(route('home'))
+        ->assertSee('Standard')
+        ->assertSee('then Free');
+
+    // Once the paid period is over the plan falls back to Free.
+    $business->update(['subscription_ends_at' => now()->subDay()]);
+
+    expect(SubscriptionGating::getOwnerTier($owner))->toBe('free');
 });

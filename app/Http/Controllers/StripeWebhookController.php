@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use App\Services\BusinessSubscriptionManager;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 use Symfony\Component\HttpFoundation\Response;
@@ -80,61 +81,15 @@ class StripeWebhookController extends CashierWebhookController
     }
 
     /**
-     * Mirror the Stripe subscription onto the business's tier columns.
-     */
-    /**
      * @param  array<string, mixed>  $subscription
      */
     protected function syncBusiness(array $subscription): void
     {
         $business = $this->findBusinessByStripeId($subscription['customer'] ?? null);
 
-        if (! $business) {
-            return;
+        if ($business) {
+            app(BusinessSubscriptionManager::class)->syncFromStripeSubscription($business, $subscription);
         }
-
-        $item = $subscription['items']['data'][0] ?? [];
-        [$tier, $cycle] = $this->resolvePlan($item['price']['id'] ?? null)
-            ?? [$subscription['metadata']['tier'] ?? null, $subscription['metadata']['billing_cycle'] ?? null];
-
-        $data = ['subscription_status' => $subscription['status'] ?? 'active'];
-
-        if ($tier) {
-            $data['subscription_tier'] = $tier;
-        }
-
-        if ($cycle) {
-            $data['billing_cycle'] = $cycle;
-        }
-
-        $periodEnd = $subscription['current_period_end'] ?? $item['current_period_end'] ?? null;
-        if ($periodEnd) {
-            $data['subscription_ends_at'] = date('Y-m-d H:i:s', $periodEnd);
-        }
-
-        $business->update($data);
-
-        Log::info("Updated business #{$business->id} subscription to {$data['subscription_status']}, tier: {$business->subscription_tier}");
-    }
-
-    /**
-     * @return array{0: string, 1: string}|null
-     */
-    protected function resolvePlan(?string $priceId): ?array
-    {
-        if (blank($priceId)) {
-            return null;
-        }
-
-        foreach (config('services.stripe.prices', []) as $tier => $cycles) {
-            foreach ($cycles as $cycle => $id) {
-                if ($id === $priceId) {
-                    return [$tier, $cycle];
-                }
-            }
-        }
-
-        return null;
     }
 
     private function findBusinessByStripeId(mixed $stripeId): ?Business

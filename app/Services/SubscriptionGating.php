@@ -201,18 +201,39 @@ class SubscriptionGating
      */
     public static function getOwnerTier(User $user): string
     {
-        $best = self::TIER_FREE;
+        $business = self::getOwnerPlanBusiness($user);
+
+        return $business ? self::getEffectiveTier($business) : self::TIER_FREE;
+    }
+
+    /**
+     * The listing that determines the owner's plan (highest effective paid tier), if any.
+     */
+    public static function getOwnerPlanBusiness(User $user): ?Business
+    {
         $rank = [self::TIER_FREE => 0, self::TIER_STANDARD => 1, self::TIER_PRO => 2, self::TIER_SPOTLIGHT => 3];
+        $best = null;
+        $bestRank = 0;
 
         foreach ($user->businesses()->get() as $business) {
-            $tier = self::getEffectiveTier($business);
+            $tierRank = $rank[self::getEffectiveTier($business)] ?? 0;
 
-            if (($rank[$tier] ?? 0) > $rank[$best]) {
-                $best = $tier;
+            if ($tierRank > $bestRank) {
+                $best = $business;
+                $bestRank = $tierRank;
             }
         }
 
         return $best;
+    }
+
+    /**
+     * Whether a paid plan has been cancelled and is only running until its period ends.
+     */
+    public static function isEnding(Business $listing): bool
+    {
+        return strtolower((string) $listing->subscription_status) === 'canceled'
+            && self::hasActiveSubscription($listing);
     }
 
     /**

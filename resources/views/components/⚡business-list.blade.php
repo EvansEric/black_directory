@@ -208,7 +208,8 @@ new class extends Component
                     wire:key="business-{{ $business->id }}"
                     x-data
                     x-show="!$store.favorites.showOnly || $store.favorites.has({{ $business->id }})"
-                    class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
+                    @click="if (! $event.target.closest('a, button')) $dispatch('open-business-details', { businessId: {{ $business->id }} })"
+                    class="cursor-pointer bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
                 >
                     <div class="relative h-40 overflow-hidden bg-slate-100">
                         <img src="{{ ($business->canAccessLogo() && $business->image) ? asset('storage/' . $business->image) : 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80' }}"
@@ -233,11 +234,15 @@ new class extends Component
                         </div>
 
                         <button
-                            @click.stop="$store.favorites.toggle({{ $business->id }})"
+                            @click.stop="@auth $store.favorites.toggle({{ $business->id }}) @else $dispatch('open-auth-modal', { tab: 'login' }) @endauth"
                             class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white backdrop-blur-md flex items-center justify-center text-slate-700 hover:text-red-500 transition shadow-md"
-                            title="Save business"
+                            title="{{ auth()->check() ? 'Save business' : 'Log in to save businesses' }}"
                         >
-                            <i :class="$store.favorites.has({{ $business->id }}) ? 'fa-solid text-red-500' : 'fa-regular'" class="fa-heart text-sm"></i>
+                            @auth
+                                <i :class="$store.favorites.has({{ $business->id }}) ? 'fa-solid text-red-500' : 'fa-regular'" class="fa-heart text-sm"></i>
+                            @else
+                                <i class="fa-regular fa-heart text-sm"></i>
+                            @endauth
                         </button>
 
                         @auth

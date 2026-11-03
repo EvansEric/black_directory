@@ -15,6 +15,7 @@ new class extends Component
     public string $location = '';
     public string $category = 'All';
     public string $sortVal = 'featured';
+    public string $parking = 'any';
 
     public array $categories = [
         'All',
@@ -50,6 +51,10 @@ new class extends Component
             $query->where('category', $this->category);
         }
 
+        if ($this->category === 'Dining & Food' && in_array($this->parking, ['yes', 'no'], true)) {
+            $query->withFreeParking($this->parking === 'yes');
+        }
+
         if (trim($this->search) !== '') {
             $term = '%' . trim($this->search) . '%';
             $query->where(function ($q) use ($term) {
@@ -72,7 +77,7 @@ new class extends Component
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['search', 'location', 'category', 'sortVal'], true)) {
+        if (in_array($property, ['search', 'location', 'category', 'sortVal', 'parking'], true)) {
             $this->resetPage();
         }
     }
@@ -80,12 +85,13 @@ new class extends Component
     public function selectCategory(string $category): void
     {
         $this->category = $category;
+        $this->parking = 'any';
         $this->resetPage();
     }
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'location', 'category', 'sortVal']);
+        $this->reset(['search', 'location', 'category', 'sortVal', 'parking']);
         $this->resetPage();
     }
 
@@ -170,6 +176,14 @@ new class extends Component
         </div>
 
         <div class="flex items-center space-x-3">
+            @if ($category === 'Dining & Food')
+                <label for="parking-select" class="text-xs font-semibold text-slate-500"><i class="fa-solid fa-square-parking mr-1 text-amber-600"></i>Parking:</label>
+                <select id="parking-select" wire:model.live="parking" class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <option value="any">Any</option>
+                    <option value="yes">Free parking</option>
+                    <option value="no">No free parking</option>
+                </select>
+            @endif
             @if ($category !== 'All' || trim($search) !== '' || trim($location) !== '')
                 <button type="button" wire:click="resetFilters"
                         class="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-slate-900 transition">
@@ -287,6 +301,13 @@ new class extends Component
                                     <span>{{ $business->rating }}</span>
                                 </div>
                             </div>
+
+                            @if ($business->free_parking !== null && $business->category === 'Dining & Food')
+                                <span class="inline-flex items-center gap-1.5 mb-3 text-[11px] font-semibold rounded-md px-2 py-0.5 {{ $business->free_parking ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}" data-parking-badge>
+                                    <i class="fa-solid fa-square-parking"></i>
+                                    {{ $business->free_parking ? 'Free parking' : 'No free parking' }}
+                                </span>
+                            @endif
 
                             @if ($business->canAccessDescription())
                                 <p class="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{{ $business->description }}</p>

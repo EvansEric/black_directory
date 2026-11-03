@@ -21,6 +21,7 @@ new class extends Component
     public string $phone = '';
     public string $website = '';
     public string $tags = '';
+    public string $freeParking = '';
     public $image;
     public string $description = '';
     public ?int $editingBusinessId = null;
@@ -37,6 +38,7 @@ new class extends Component
             'phone' => ['nullable', 'string', 'max:30'],
             'website' => ['nullable', 'url', 'max:255'],
             'tags' => ['nullable', 'string', 'max:1000'],
+            'freeParking' => ['nullable', 'in:0,1'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'description' => ['required', 'string', 'max:2000'],
         ];
@@ -58,6 +60,11 @@ new class extends Component
 
         $data = $this->validate();
         $data['state'] = strtoupper($data['state']);
+        // Parking only applies to food businesses; blank means not specified.
+        $data['free_parking'] = ($data['category'] === 'Dining & Food' && $data['freeParking'] !== null && $data['freeParking'] !== '')
+            ? $data['freeParking'] === '1'
+            : null;
+        unset($data['freeParking']);
         $data['location'] = trim($data['city']).', '.$data['state'];
         $data['tags'] = collect(explode(',', $data['tags'] ?? ''))
             ->map(fn (string $tag): string => trim($tag))
@@ -150,6 +157,7 @@ new class extends Component
         $this->phone = $business->phone ?? '';
         $this->website = $business->website ?? '';
         $this->tags = implode(', ', $business->tags ?? []);
+        $this->freeParking = $business->free_parking === null ? '' : ($business->free_parking ? '1' : '0');
         $this->image = null;
         $this->description = $business->description;
         $this->resetValidation();
@@ -157,7 +165,7 @@ new class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'tags', 'image', 'description', 'editingBusinessId']);
+        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'tags', 'freeParking', 'image', 'description', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
     }
@@ -313,6 +321,18 @@ new class extends Component
                         <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
                     </div>
                 @endif
+            </div>
+
+            <div x-data x-show="$wire.category === 'Dining & Food'" data-free-parking-field>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Free parking</label>
+                    <select wire:model="freeParking" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <option value="">Not specified</option>
+                        <option value="1">Yes, free parking available</option>
+                        <option value="0">No free parking</option>
+                    </select>
+                    @error('freeParking') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
             </div>
 
             <div>

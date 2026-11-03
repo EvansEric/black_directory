@@ -82,6 +82,12 @@ new class extends Component
                             <i class="fa-solid fa-location-dot mt-1 text-amber-600"></i>
                             <span>{{ collect([$business->address, $business->location, $business->zip])->filter()->implode(', ') }}</span>
                         </li>
+                        @if ($business->free_parking !== null && $business->category === 'Dining & Food')
+                            <li class="flex items-center gap-2">
+                                <i class="fa-solid fa-square-parking text-amber-600"></i>
+                                <span>{{ $business->free_parking ? 'Free parking available' : 'No free parking' }}</span>
+                            </li>
+                        @endif
                         @if ($business->phone)
                             <li class="flex items-center gap-2">
                                 <i class="fa-solid fa-phone text-amber-600"></i>

@@ -33,6 +33,7 @@ class Business extends Model
         'reviews_count',
         'featured',
         'tags',
+        'free_parking',
         'subscription_tier',
         'billing_cycle',
         'stripe_id',
@@ -53,6 +54,7 @@ class Business extends Model
     protected $casts = [
         'tags' => 'array',
         'featured' => 'boolean',
+        'free_parking' => 'boolean',
         'rating' => 'decimal:1',
         'subscription_ends_at' => 'datetime',
     ];
@@ -140,6 +142,17 @@ class Business extends Model
     public function canAccessPrioritySearch(): bool
     {
         return SubscriptionGating::canAccessPrioritySearch($this);
+    }
+
+    /**
+     * Filter food listings by whether they offer free parking.
+     *
+     * @param  Builder<Business>  $query
+     * @return Builder<Business>
+     */
+    public function scopeWithFreeParking(Builder $query, bool $hasFreeParking = true): Builder
+    {
+        return $query->where('free_parking', $hasFreeParking);
     }
 
     // Scope for Tier Priority Sorting (Homepage Spotlight > Featured / Pro > Standard > Free)

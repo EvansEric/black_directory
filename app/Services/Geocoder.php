@@ -43,17 +43,37 @@ class Geocoder
     }
 
     /**
-     * Resolve a US zip code to its city name; successful lookups are cached.
+     * Resolve a US zip code to its city name.
      */
     public function cityForZip(string $zip): ?string
+    {
+        return $this->lookupZip($zip)['city'] ?? null;
+    }
+
+    /**
+     * @return array{latitude: float, longitude: float}|null
+     */
+    public function coordinatesForZip(string $zip): ?array
+    {
+        $found = $this->lookupZip($zip);
+
+        return $found ? ['latitude' => $found['latitude'], 'longitude' => $found['longitude']] : null;
+    }
+
+    /**
+     * Successful zip lookups are cached.
+     *
+     * @return array{latitude: float, longitude: float, city: ?string}|null
+     */
+    private function lookupZip(string $zip): ?array
     {
         if (! $this->enabled || ! preg_match('/^\d{5}$/', $zip)) {
             return null;
         }
 
-        $key = "geocoder.zip-city.{$zip}";
+        $key = "geocoder.zip.{$zip}";
 
-        if (($cached = Cache::get($key)) !== null) {
+        if ($cached = Cache::get($key)) {
             return $cached;
         }
 
@@ -62,20 +82,27 @@ class Geocoder
                 ->timeout(5)
                 ->get($this->endpoint, ['postalcode' => $zip, 'format' => 'json', 'limit' => 1, 'addressdetails' => 1, 'countrycodes' => 'us']);
 
-            $address = $response->successful() ? ($response->json()[0]['address'] ?? []) : [];
+            $match = $response->successful() ? ($response->json()[0] ?? null) : null;
         } catch (\Throwable $exception) {
             Log::warning('Zip lookup failed: '.$exception->getMessage());
 
             return null;
         }
 
-        $city = $address['city'] ?? $address['town'] ?? $address['village'] ?? $address['hamlet'] ?? null;
-
-        if ($city) {
-            Cache::forever($key, $city);
+        if (! isset($match['lat'], $match['lon'])) {
+            return null;
         }
 
-        return $city;
+        $address = $match['address'] ?? [];
+        $found = [
+            'latitude' => (float) $match['lat'],
+            'longitude' => (float) $match['lon'],
+            'city' => $address['city'] ?? $address['town'] ?? $address['village'] ?? $address['hamlet'] ?? null,
+        ];
+
+        Cache::forever($key, $found);
+
+        return $found;
     }
 
     /**

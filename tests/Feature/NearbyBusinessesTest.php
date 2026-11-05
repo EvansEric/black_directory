@@ -131,3 +131,19 @@ it('matches a zip code search to listings in that zip\'s city', function () {
         ->assertSee('Decatur Shop')
         ->assertDontSee('Macon Shop');
 });
+
+it('measures the distance filter from a typed zip code', function () {
+    $geocoder = $this->mock(Geocoder::class);
+    $geocoder->shouldReceive('coordinatesForZip')->with('77550')
+        ->andReturn(['latitude' => 29.3013, 'longitude' => -94.7977]);
+    $geocoder->shouldReceive('cityForZip')->andReturn('Galveston');
+    nearbyListing('Houston Shop', 29.7604, -95.3698);
+
+    Livewire::test('business-list')
+        ->set('location', '77550')
+        ->set('distance', '100')
+        ->assertSee('Houston Shop')
+        ->assertDontSee('Decatur Shop')
+        ->assertDontSee('Chicago Shop')
+        ->assertSeeHtml('data-distance-badge');
+});

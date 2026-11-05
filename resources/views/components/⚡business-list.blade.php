@@ -94,7 +94,9 @@ new class extends Component
             });
         }
 
-        if (trim($this->location) !== '') {
+        $center = $this->searchCenter();
+
+        if (trim($this->location) !== '' && ! $this->zipIsCenter()) {
             $raw = trim($this->location);
             $term = '%' . $raw . '%';
             $city = app(Geocoder::class)->cityForZip($raw);
@@ -110,17 +112,45 @@ new class extends Component
             });
         }
 
-        if ($this->hasLocation()) {
-            $query->nearby($this->userLat, $this->userLng, $this->radius());
+        if ($center) {
+            $query->nearby($center['latitude'], $center['longitude'], $this->radius());
         }
 
-        if ($this->sortVal === 'nearest' && $this->hasLocation()) {
+        if ($center && ($this->sortVal === 'nearest' || ($this->zipIsCenter() && $this->sortVal === 'featured'))) {
             $query->orderedByDistance();
 
             return $query->paginate(6);
         }
 
         return $query->orderedByTier($this->sortVal)->paginate(6);
+    }
+
+    /** A typed zip code is the distance origin when a radius is chosen. */
+    private function zipIsCenter(): bool
+    {
+        return $this->zipCoordinates() !== null;
+    }
+
+    /** @return array{latitude: float, longitude: float}|null */
+    private function zipCoordinates(): ?array
+    {
+        $zip = trim($this->location);
+
+        if ($this->radius() === null || ! preg_match('/^\d{5}$/', $zip)) {
+            return null;
+        }
+
+        return app(Geocoder::class)->coordinatesForZip($zip);
+    }
+
+    /** @return array{latitude: float, longitude: float}|null */
+    private function searchCenter(): ?array
+    {
+        if ($zip = $this->zipCoordinates()) {
+            return $zip;
+        }
+
+        return $this->hasLocation() ? ['latitude' => $this->userLat, 'longitude' => $this->userLng] : null;
     }
 
     public function hasLocation(): bool
@@ -333,7 +363,7 @@ new class extends Component
             @endif
             <div x-data="nearMe" class="flex items-center space-x-2" data-near-me>
                 <label for="distance-select" class="text-xs font-semibold text-slate-500"><i class="fa-solid fa-location-crosshairs mr-1 text-amber-600"></i>Distance:</label>
-                <select id="distance-select" wire:model.live="distance" @change="if ($event.target.value !== 'any' && $wire.userLat === null) locate()"
+                <select id="distance-select" wire:model.live="distance" @change="if ($event.target.value !== 'any' && $wire.userLat === null && ! /^\d{5}$/.test($wire.location.trim())) locate()"
                         class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
                     <option value="any">Any distance</option>
                     @foreach ($this::DISTANCES as $miles)

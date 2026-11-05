@@ -2,10 +2,38 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new class extends Component
 {
+    #[Url(as: 'saved')]
+    public bool $savedActive = false;
+
+    public function savedCount(): int
+    {
+        return Auth::check() ? Auth::user()->savedBusinesses()->count() : 0;
+    }
+
+    public function toggleSavedFilter(): void
+    {
+        $this->savedActive = ! $this->savedActive;
+        $this->dispatch('toggle-saved-filter');
+    }
+
+    #[On('favorites-updated')]
+    public function refreshSavedCount(): void
+    {
+        // Listening re-renders the component so the Saved count stays current.
+    }
+
+    #[On('saved-filter-changed')]
+    public function syncSavedFilter(bool $active): void
+    {
+        $this->savedActive = $active;
+    }
+
     public function logout(): void
     {
         Auth::guard('web')->logout();
@@ -42,12 +70,11 @@ new class extends Component
                     <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
                     @auth
                         <button
-                            @click="$store.favorites.showOnly = !$store.favorites.showOnly"
-                            :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
-                            class="transition-colors flex items-center space-x-1.5"
+                            wire:click="toggleSavedFilter"
+                            class="transition-colors flex items-center space-x-1.5 {{ $savedActive ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900' }}"
                         >
                             <i class="fa-solid fa-heart text-amber-500 text-xs"></i>
-                            <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
+                            <span>Saved ({{ $this->savedCount() }})</span>
                         </button>
                     @endauth
                 </nav>
@@ -90,14 +117,17 @@ new class extends Component
                             </div>
                             @php
                                 $planBusiness = \App\Services\SubscriptionGating::getOwnerPlanBusiness(auth()->user());
-                                $currentPlan = \App\Services\SubscriptionGating::TIERS[$planBusiness ? \App\Services\SubscriptionGating::getEffectiveTier($planBusiness) : 'free'];
-                                $planEnds = $planBusiness?->subscription_ends_at;
-                                $planEnding = $planBusiness && \App\Services\SubscriptionGating::isEnding($planBusiness);
+                                $currentPlan = \App\Services\SubscriptionGating::TIERS[\App\Services\SubscriptionGating::getOwnerTier(auth()->user())];
+                                $planEnds = $planBusiness ? $planBusiness->subscription_ends_at : auth()->user()->pending_plan_ends_at;
+                                $planEnding = $planBusiness ? \App\Services\SubscriptionGating::isEnding($planBusiness) : $planEnds !== null;
                             @endphp
                             <a href="{{ route('pricing') }}" class="flex items-center justify-between px-4 py-2 border-b border-slate-100 hover:bg-slate-50 transition" data-current-plan>
                                 <span>
                                     <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Current plan</span>
                                     <span class="block text-xs font-bold text-amber-700">{{ $currentPlan['name'] }}</span>
+                                    @if (! $planBusiness && $currentPlan['key'] !== 'free')
+                                        <span class="block text-[11px] text-slate-500" data-plan-pending>Paid &middot; create a listing to apply it</span>
+                                    @endif
                                     @if ($planEnds && $planEnds->isFuture())
                                         <span class="block text-[11px] {{ $planEnding ? 'text-red-600' : 'text-slate-500' }}" data-plan-time-left>
                                             @if ($planEnding)
@@ -142,12 +172,11 @@ new class extends Component
             <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
             @auth
                 <button
-                    @click="$store.favorites.showOnly = !$store.favorites.showOnly"
-                    :class="$store.favorites.showOnly ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900'"
-                    class="transition-colors flex items-center space-x-1.5"
+                    wire:click="toggleSavedFilter"
+                    class="transition-colors flex items-center space-x-1.5 {{ $savedActive ? 'text-amber-700 font-semibold' : 'text-slate-600 hover:text-slate-900' }}"
                 >
                     <i class="fa-solid fa-heart text-amber-500 text-[10px]"></i>
-                    <span>Saved (<span x-text="$store.favorites.ids.length">0</span>)</span>
+                    <span>Saved ({{ $this->savedCount() }})</span>
                 </button>
             @endauth
         </nav>

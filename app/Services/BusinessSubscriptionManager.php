@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Business;
+use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Subscription;
@@ -42,10 +44,7 @@ class BusinessSubscriptionManager
         ]);
     }
 
-    /**
-     * @return array{url: string, id: string}
-     */
-    public function createCheckout(Business $business, string $tier, string $cycle): array
+    private function checkoutPriceId(string $tier, string $cycle): string
     {
         $priceId = config("services.stripe.prices.{$tier}.{$cycle}");
         $stripeSecret = config('cashier.secret');
@@ -54,9 +53,166 @@ class BusinessSubscriptionManager
             abort(503, 'Stripe checkout is not configured. Add STRIPE_SECRET to your environment.');
         }
 
-        if (blank($priceId) || str_ends_with((string) $priceId, '...')) {
+        if (! is_string($priceId) || blank($priceId) || str_ends_with($priceId, '...')) {
             abort(503, "Stripe price is not configured for the {$tier} {$cycle} plan.");
         }
+
+        return $priceId;
+    }
+
+    /**
+     * Checkout for a user who has no listing yet; the paid plan is attached to
+     * their first listing once the session is confirmed.
+     *
+     * @return array{url: string, id: string}
+     */
+    public function createAccountCheckout(User $user, string $tier, string $cycle): array
+    {
+        $priceId = $this->checkoutPriceId($tier, $cycle);
+        $metadata = ['user_id' => (string) $user->id, 'tier' => $tier, 'billing_cycle' => $cycle];
+
+        try {
+            $session = Cashier::stripe()->checkout->sessions->create([
+                'mode' => 'subscription',
+                'line_items' => [['price' => $priceId, 'quantity' => 1]],
+                'customer_email' => $user->email,
+                'client_reference_id' => (string) $user->id,
+                'success_url' => route('subscriptions.account-success').'?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => url('/?subscription=canceled'),
+                'metadata' => $metadata,
+                'subscription_data' => ['metadata' => $metadata],
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Stripe account checkout error: '.$exception->getMessage(), ['user_id' => $user->id, 'tier' => $tier]);
+
+            throw new HttpException(502, 'Stripe could not start checkout. Please try again.', $exception);
+        }
+
+        return ['url' => $session->url, 'id' => $session->id];
+    }
+
+    /**
+     * Confirm a paid account-level checkout, then attach it to the user's first
+     * listing if they already have one (otherwise it waits for their first listing).
+     */
+    public function recordAccountCheckout(User $user, string $sessionId): bool
+    {
+        $session = $this->retrieveAccountSession($user, $sessionId);
+
+        if ($session === null) {
+            return false;
+        }
+
+        $user->forceFill([
+            'pending_stripe_session_id' => $sessionId,
+            'pending_plan_tier' => $session['tier'],
+            'pending_billing_cycle' => $session['cycle'],
+            'pending_plan_ends_at' => null,
+        ])->save();
+
+        $business = $user->businesses()->first();
+
+        if ($business) {
+            $this->claimPendingPlan($user, $business);
+        }
+
+        return true;
+    }
+
+    /**
+     * Downgrade a paid plan that is still waiting for a listing: it keeps running
+     * until the period already paid for ends, then lapses to Free.
+     */
+    public function cancelPendingPlan(User $user): bool
+    {
+        $session = filled($user->pending_stripe_session_id)
+            ? $this->retrieveAccountSession($user, $user->pending_stripe_session_id)
+            : null;
+
+        if ($session === null) {
+            return false;
+        }
+
+        try {
+            $updated = Cashier::stripe()->subscriptions->update($session['subscription']['id'], ['cancel_at_period_end' => true])->toArray();
+        } catch (\Throwable $exception) {
+            Log::error('Stripe pending plan cancellation error: '.$exception->getMessage(), ['user_id' => $user->id]);
+
+            throw new HttpException(502, 'Stripe could not cancel the subscription. Please try again.', $exception);
+        }
+
+        $periodEnd = $updated['current_period_end'] ?? $updated['items']['data'][0]['current_period_end'] ?? null;
+
+        $user->forceFill(['pending_plan_ends_at' => is_int($periodEnd) ? Carbon::createFromTimestamp($periodEnd) : now()])->save();
+
+        return true;
+    }
+
+    /**
+     * Attach the user's paid-but-unassigned plan to a listing.
+     */
+    public function claimPendingPlan(User $user, Business $business): bool
+    {
+        $sessionId = $user->pending_stripe_session_id;
+
+        if (blank($sessionId)) {
+            return false;
+        }
+
+        $session = $this->retrieveAccountSession($user, $sessionId);
+
+        if ($session === null) {
+            return false;
+        }
+
+        $subscription = $session['subscription'];
+        $business->forceFill(['stripe_id' => $session['customer']])->save();
+
+        $this->recordCashierSubscription($business, $subscription);
+        $this->syncFromStripeSubscription($business, $subscription);
+
+        $user->forceFill(['pending_stripe_session_id' => null, 'pending_plan_tier' => null, 'pending_billing_cycle' => null, 'pending_plan_ends_at' => null])->save();
+
+        return true;
+    }
+
+    /**
+     * @return array{customer: string, subscription: array<string, mixed>, tier: string|null, cycle: string|null}|null
+     */
+    private function retrieveAccountSession(User $user, string $sessionId): ?array
+    {
+        try {
+            $session = Cashier::stripe()->checkout->sessions->retrieve($sessionId, ['expand' => ['subscription']])->toArray();
+        } catch (\Throwable $exception) {
+            Log::error('Stripe account session lookup failed: '.$exception->getMessage(), ['user_id' => $user->id]);
+
+            return null;
+        }
+
+        $subscription = $session['subscription'] ?? null;
+        $customer = $session['customer'] ?? null;
+
+        if (($session['metadata']['user_id'] ?? null) !== (string) $user->id
+            || ($session['mode'] ?? null) !== 'subscription'
+            || ! is_array($subscription)
+            || ! is_string($customer)) {
+            return null;
+        }
+
+        return [
+            'customer' => $customer,
+            'subscription' => $subscription,
+            'tier' => $session['metadata']['tier'] ?? null,
+            'cycle' => $session['metadata']['billing_cycle'] ?? null,
+        ];
+    }
+
+    /**
+     * @return array{url: string, id: string}
+     */
+    public function createCheckout(Business $business, string $tier, string $cycle): array
+    {
+        $priceId = $this->checkoutPriceId($tier, $cycle);
 
         $metadata = [
             'business_id' => (string) $business->id,

@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\SubscriptionGating;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -36,6 +38,11 @@ class extends Component
             'popular' => true,
         ],
     ];
+
+    public function currentTier(): ?string
+    {
+        return Auth::check() ? SubscriptionGating::getOwnerTier(Auth::user()) : null;
+    }
 }; ?>
 
 <div class="flex min-h-screen flex-col bg-white">
@@ -58,6 +65,10 @@ class extends Component
             <div class="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-3">
                 @foreach ($plans as $plan)
                     <article class="relative flex flex-col justify-between rounded-2xl border-2 p-6 transition {{ ($plan['popular'] ?? false) ? 'border-amber-500 bg-amber-50/40 shadow-xl ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-amber-300' }}">
+                        @if ($this->currentTier() === $plan['key'])
+                            <div class="absolute -top-3 right-4 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</div>
+                        @endif
+
                         @if ($plan['popular'] ?? false)
                             <div class="most-popular-badge absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-md">
                                 Most Popular
@@ -91,7 +102,7 @@ class extends Component
                             @click="$dispatch('open-subscription-modal', { tier: '{{ $plan['key'] }}' })"
                             class="w-full rounded-xl py-3 text-sm font-bold transition {{ ($plan['popular'] ?? false) ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20 hover:bg-amber-500' : 'bg-slate-900 text-white hover:bg-slate-800' }}"
                         >
-                            Choose {{ $plan['name'] }}
+                            {{ $this->currentTier() === $plan['key'] ? 'Manage '.$plan['name'].' (current)' : 'Choose '.$plan['name'] }}
                         </button>
                     </article>
                 @endforeach

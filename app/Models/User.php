@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -17,6 +18,10 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string $email
  * @property string|null $google_id
+ * @property string|null $pending_stripe_session_id
+ * @property string|null $pending_plan_tier
+ * @property string|null $pending_billing_cycle
+ * @property Carbon|null $pending_plan_ends_at
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $remember_token
@@ -39,6 +44,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'pending_plan_ends_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -61,5 +67,15 @@ class User extends Authenticatable
     public function businesses(): HasMany
     {
         return $this->hasMany(Business::class);
+    }
+
+    /**
+     * Businesses this user has saved.
+     *
+     * @return BelongsToMany<Business, $this>
+     */
+    public function savedBusinesses(): BelongsToMany
+    {
+        return $this->belongsToMany(Business::class, 'business_favorites')->withTimestamps();
     }
 }

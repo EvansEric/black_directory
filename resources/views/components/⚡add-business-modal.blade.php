@@ -1,9 +1,12 @@
 <?php
 
 use App\Models\Business;
+use App\Services\BusinessSubscriptionManager;
+use App\Services\Geocoder;
 use App\Services\SubscriptionGating;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -20,8 +23,10 @@ new class extends Component
     public string $zip = '';
     public string $phone = '';
     public string $website = '';
+    public string $customSlug = '';
     public string $tags = '';
     public string $freeParking = '';
+    public array $insuranceTypes = [];
     public $image;
     public string $description = '';
     public ?int $editingBusinessId = null;
@@ -36,9 +41,15 @@ new class extends Component
             'address' => ['nullable', 'string', 'max:255'],
             'zip' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'website' => ['nullable', 'url', 'max:255'],
+            'website' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'customSlug' => [
+                'nullable', 'string', 'max:60', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/',
+                Rule::unique('businesses', 'custom_slug')->ignore($this->editingBusinessId),
+            ],
             'tags' => ['nullable', 'string', 'max:1000'],
             'freeParking' => ['nullable', 'in:0,1'],
+            'insuranceTypes' => ['array'],
+            'insuranceTypes.*' => ['string', Rule::in(array_keys(Business::INSURANCE_TYPES))],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'description' => ['required', 'string', 'max:2000'],
         ];
@@ -52,6 +63,14 @@ new class extends Component
             return;
         }
 
+        if ($this->editingBusinessId) {
+            abort_unless(
+                Auth::id() === Business::query()->findOrFail($this->editingBusinessId)->user_id,
+                403,
+                'You are not authorized to edit this business.'
+            );
+        }
+
         if (! $this->editingBusinessId && ! SubscriptionGating::canAddBusiness(Auth::user())) {
             $this->addError('name', $this->limitMessage());
 
@@ -60,11 +79,18 @@ new class extends Component
 
         $data = $this->validate();
         $data['state'] = strtoupper($data['state']);
+        $data['custom_slug'] = filled($data['customSlug'] ?? null) ? strtolower(trim($data['customSlug'])) : null;
+        unset($data['customSlug']);
         // Parking only applies to food businesses; blank means not specified.
         $data['free_parking'] = ($data['category'] === 'Dining & Food' && $data['freeParking'] !== null && $data['freeParking'] !== '')
             ? $data['freeParking'] === '1'
             : null;
         unset($data['freeParking']);
+        // Insurance types only apply to Insurance listings.
+        $data['insurance_types'] = $data['category'] === 'Insurance'
+            ? array_values(array_unique($data['insuranceTypes']))
+            : null;
+        unset($data['insuranceTypes']);
         $data['location'] = trim($data['city']).', '.$data['state'];
         $data['tags'] = collect(explode(',', $data['tags'] ?? ''))
             ->map(fn (string $tag): string => trim($tag))
@@ -78,9 +104,12 @@ new class extends Component
             : null;
 
         // Custom link and logo upload are Standard-tier features; strip them for free listings.
-        if (! SubscriptionGating::canAccessCustomUrl($existingBusiness)) {
+        if (! $this->canEditWebsite()) {
             $data['website'] = $existingBusiness?->website;
+            $data['custom_slug'] = $existingBusiness?->custom_slug;
         }
+
+        $data = [...$data, ...$this->coordinatesFor($data, $existingBusiness)];
 
         if (! SubscriptionGating::canAccessLogo($existingBusiness)) {
             $this->image = null;
@@ -112,7 +141,7 @@ new class extends Component
                 $imagePath = $this->image->store('businesses', 'public');
             }
 
-            Business::create([
+            $business = Business::create([
                 ...$data,
                 'image' => $imagePath,
                 'user_id' => Auth::id(),
@@ -120,6 +149,8 @@ new class extends Component
                 'reviews_count' => 0,
                 'featured' => true,
             ]);
+
+            app(BusinessSubscriptionManager::class)->claimPendingPlan(Auth::user(), $business);
         }
 
         $this->resetForm();
@@ -156,8 +187,10 @@ new class extends Component
         $this->zip = $business->zip ?? '';
         $this->phone = $business->phone ?? '';
         $this->website = $business->website ?? '';
+        $this->customSlug = $business->custom_slug ?? '';
         $this->tags = implode(', ', $business->tags ?? []);
         $this->freeParking = $business->free_parking === null ? '' : ($business->free_parking ? '1' : '0');
+        $this->insuranceTypes = $business->insurance_types ?? [];
         $this->image = null;
         $this->description = $business->description;
         $this->resetValidation();
@@ -165,21 +198,57 @@ new class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'tags', 'freeParking', 'image', 'description', 'editingBusinessId']);
+        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'customSlug', 'tags', 'freeParking', 'insuranceTypes', 'image', 'description', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
     }
 
+    /**
+     * Distance search needs coordinates; look them up when the address is new or changed.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{latitude?: float|null, longitude?: float|null}
+     */
+    private function coordinatesFor(array $data, ?Business $existing): array
+    {
+        $unchanged = $existing
+            && $existing->latitude !== null
+            && collect(['address', 'city', 'state', 'zip'])->every(
+                fn (string $field): bool => (string) $existing->{$field} === (string) ($data[$field] ?? '')
+            );
+
+        if ($unchanged) {
+            return [];
+        }
+
+        $found = app(Geocoder::class)->geocode(
+            collect([$data['address'] ?? null, $data['city'], $data['state'], $data['zip'] ?? null])->filter()->implode(', ')
+        );
+
+        return $found ?? ['latitude' => null, 'longitude' => null];
+    }
+
     public function canEditWebsite(): bool
     {
-        return SubscriptionGating::canAccessCustomUrl($this->currentBusiness());
+        $business = $this->currentBusiness();
+
+        if ($business || ! Auth::check()) {
+            return SubscriptionGating::canAccessCustomUrl($business);
+        }
+
+        // A new listing inherits the plan the owner already pays for.
+        return SubscriptionGating::getOwnerTier(Auth::user()) !== SubscriptionGating::TIER_FREE;
     }
 
     public function limitMessage(): string
     {
-        $limit = SubscriptionGating::businessLimit(Auth::user());
+        $user = Auth::user();
+        $limit = SubscriptionGating::businessLimit($user);
+        $plan = SubscriptionGating::TIERS[SubscriptionGating::getOwnerTier($user)]['name'];
+        $noun = $limit === 1 ? 'listing' : 'listings';
+        $upgrade = $limit === 1 ? 'Upgrade to Pro to list up to 5 businesses.' : 'Upgrade to Spotlight for unlimited listings.';
 
-        return "Your plan allows {$limit} business ".($limit === 1 ? 'listing' : 'listings').'. Upgrade to add more.';
+        return "Your {$plan} plan allows only {$limit} business {$noun}. {$upgrade}";
     }
 
     public function atBusinessLimit(): bool
@@ -229,11 +298,30 @@ new class extends Component
 
         <form wire:submit="save" class="space-y-4">
             @if ($this->atBusinessLimit())
-                <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3.5 py-2.5">
-                    {{ $this->limitMessage() }}
-                    Standard includes 1 listing, Pro up to 5, and Spotlight is unlimited.
+                <div class="flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-amber-900" role="alert" data-form-locked>
+                    <i class="fa-solid fa-lock mt-0.5 text-lg text-amber-600"></i>
+                    <div class="text-xs">
+                        <p class="text-sm font-bold">This form is locked</p>
+                        <p class="mt-0.5" data-business-limit>{{ $this->limitMessage() }}</p>
+                        <button type="button" x-data
+                                @click="$dispatch('open-subscription-modal', { tier: 'pro', businessId: {{ Auth::user()->businesses()->value('id') ?? 'null' }} })"
+                                class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
+                            <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Pro to unlock
+                        </button>
+                    </div>
                 </div>
             @endif
+
+            {{-- A disabled fieldset locks every input inside it until the owner upgrades. --}}
+            <div class="relative">
+            @if ($this->atBusinessLimit())
+                <div class="absolute inset-0 z-10 flex cursor-not-allowed items-start justify-center rounded-xl bg-slate-200/40 pt-16" data-form-lock-overlay>
+                    <span class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-lg">
+                        <i class="fa-solid fa-lock"></i> Locked until you upgrade to Pro
+                    </span>
+                </div>
+            @endif
+            <fieldset @disabled($this->atBusinessLimit()) data-form-fields class="m-0 min-w-0 space-y-4 border-0 p-0 transition-opacity disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale">
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Business Name *</label>
                 <input type="text" wire:model="name" placeholder="e.g. Harmony Organic Cafe"
@@ -259,6 +347,7 @@ new class extends Component
                         <option value="IT & Tech Solutions">IT & Tech Solutions</option>
                         <option value="Legal & Financial">Legal & Financial</option>
                         <option value="Insurance">Insurance</option>
+                        <option value="Security & Protection Services">Security & Protection Services</option>
                         <option value="Marketing & Media">Marketing & Media</option>
                         <option value="Education & Instruction">Education & Instruction</option>
                         <option value="Travel & Lodging">Travel & Lodging</option>
@@ -315,12 +404,34 @@ new class extends Component
                     <input type="url" wire:model="website" placeholder="https://example.com"
                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
                     @error('website') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+
+                    <label class="block text-xs font-semibold text-slate-700 mt-3 mb-1">Custom link (optional)</label>
+                    <div class="flex items-center rounded-xl border border-slate-200 text-sm focus-within:ring-2 focus-within:ring-amber-500">
+                        <span class="pl-3.5 pr-1 text-slate-400 whitespace-nowrap">{{ rtrim(url('/b'), '/') }}/</span>
+                        <input type="text" wire:model="customSlug" placeholder="my-business" maxlength="60"
+                               class="w-full py-2.5 pr-3.5 bg-transparent border-0 text-sm focus:outline-none focus:ring-0">
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Visitors see this link, and it forwards to your website. Use lowercase letters, numbers and dashes.</p>
+                    @error('customSlug') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 @else
                     <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500">
                         <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Custom link is a Standard-tier feature</span>
                         <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
                     </div>
                 @endif
+            </div>
+
+            <div x-data x-show="$wire.category === 'Insurance'" data-insurance-types-field>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Insurance types offered</label>
+                <div class="grid grid-cols-2 gap-2">
+                    @foreach (\App\Models\Business::INSURANCE_TYPES as $key => $label)
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 cursor-pointer hover:border-amber-400">
+                            <input type="checkbox" wire:model="insuranceTypes" value="{{ $key }}" class="rounded border-slate-300 text-amber-500 focus:ring-amber-500">
+                            <span>{{ $label }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                @error('insuranceTypes.*') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div x-data x-show="$wire.category === 'Dining & Food'" data-free-parking-field>
@@ -367,13 +478,15 @@ new class extends Component
                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
                 @error('description') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
+            </fieldset>
+            </div>
 
             <div class="pt-2">
-                <button type="submit"
-                        class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-amber-900/20"
+                <button type="submit" @disabled($this->atBusinessLimit())
+                        class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-amber-900/20 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
                         wire:loading.attr="disabled" wire:target="save, image"
                 >
-                    <span wire:loading.remove wire:target="save, image">{{ $editingBusinessId ? 'Save Changes' : 'Submit Listing' }}</span>
+                    <span wire:loading.remove wire:target="save, image">{{ $this->atBusinessLimit() ? 'Upgrade to Pro to add another business' : ($editingBusinessId ? 'Save Changes' : 'Submit Listing') }}</span>
                     <span wire:loading wire:target="save, image">{{ $editingBusinessId ? 'Saving...' : 'Submitting...' }}</span>
                 </button>
             </div>

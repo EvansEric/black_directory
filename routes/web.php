@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BusinessLinkController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PasswordResetController;
@@ -10,10 +11,12 @@ use Illuminate\Support\Facades\Route;
 Route::livewire('/', 'pages::home')->name('home');
 Route::livewire('/pricing', 'pages::pricing')->name('pricing');
 Route::livewire('/mission', 'pages::mission')->name('mission');
+Route::get('/b/{slug}', BusinessLinkController::class)->where('slug', '[a-z0-9-]+')->name('business.link');
 
 // Subscription Routes
 Route::get('/subscriptions/pricing', [SubscriptionController::class, 'pricing'])->name('subscriptions.pricing');
 Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])->name('subscriptions.checkout');
+Route::get('/subscriptions/success', [SubscriptionController::class, 'accountSuccess'])->name('subscriptions.account-success');
 Route::get('/subscriptions/success/{business}', [SubscriptionController::class, 'success'])->name('subscriptions.success');
 Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
 

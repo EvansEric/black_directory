@@ -203,7 +203,28 @@ class SubscriptionGating
     {
         $business = self::getOwnerPlanBusiness($user);
 
-        return $business ? self::getEffectiveTier($business) : self::TIER_FREE;
+        if ($business) {
+            return self::getEffectiveTier($business);
+        }
+
+        return self::pendingTier($user) ?? self::TIER_FREE;
+    }
+
+    /**
+     * A paid plan the user bought before creating a listing, if any.
+     */
+    public static function pendingTier(User $user): ?string
+    {
+        $tier = $user->pending_plan_tier;
+
+        if (blank($user->pending_stripe_session_id) || ! isset(self::TIERS[$tier])) {
+            return null;
+        }
+
+        // A downgraded pending plan lapses once the period already paid for is over.
+        $ends = $user->pending_plan_ends_at;
+
+        return $ends && $ends->isPast() ? null : $tier;
     }
 
     /**

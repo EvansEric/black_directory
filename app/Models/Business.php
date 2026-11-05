@@ -25,8 +25,11 @@ class Business extends Model
         'state',
         'address',
         'zip',
+        'latitude',
+        'longitude',
         'phone',
         'website',
+        'custom_slug',
         'image',
         'description',
         'rating',
@@ -34,11 +37,22 @@ class Business extends Model
         'featured',
         'tags',
         'free_parking',
+        'insurance_types',
         'subscription_tier',
         'billing_cycle',
         'stripe_id',
         'subscription_status',
         'subscription_ends_at',
+    ];
+
+    /** @var array<string, string> */
+    public const INSURANCE_TYPES = [
+        'auto' => 'Auto',
+        'home' => 'Home',
+        'commercial' => 'Commercial',
+        'life' => 'Life',
+        'health' => 'Health',
+        'pet' => 'Pet',
     ];
 
     protected static function booted(): void
@@ -55,6 +69,9 @@ class Business extends Model
         'tags' => 'array',
         'featured' => 'boolean',
         'free_parking' => 'boolean',
+        'insurance_types' => 'array',
+        'latitude' => 'float',
+        'longitude' => 'float',
         'rating' => 'decimal:1',
         'subscription_ends_at' => 'datetime',
     ];
@@ -119,6 +136,18 @@ class Business extends Model
         return SubscriptionGating::canAccessLogo($this);
     }
 
+    /**
+     * The address shown to visitors: the masked /b/{slug} link when set, else the website itself.
+     */
+    public function websiteLink(): ?string
+    {
+        if (! $this->canAccessCustomUrl() || blank($this->website)) {
+            return null;
+        }
+
+        return filled($this->custom_slug) ? route('business.link', $this->custom_slug) : $this->website;
+    }
+
     public function canAccessCustomUrl(): bool
     {
         return SubscriptionGating::canAccessCustomUrl($this);
@@ -153,6 +182,52 @@ class Business extends Model
     public function scopeWithFreeParking(Builder $query, bool $hasFreeParking = true): Builder
     {
         return $query->where('free_parking', $hasFreeParking);
+    }
+
+    /**
+     * @param  Builder<Business>  $query
+     * @return Builder<Business>
+     */
+    public function scopeOfferingInsurance(Builder $query, string $type): Builder
+    {
+        return $query->whereJsonContains('insurance_types', $type);
+    }
+
+    /**
+     * Adds a distance_miles column (great-circle, miles) and optionally limits to a radius.
+     *
+     * @param  Builder<Business>  $query
+     * @return Builder<Business>
+     */
+    public function scopeNearby(Builder $query, float $latitude, float $longitude, ?int $miles = null): Builder
+    {
+        $rad = 0.017453292519943295;
+        $distance = '(7917.5 * asin(sqrt(
+            power(sin((businesses.latitude * ? - ?) / 2), 2)
+            + cos(businesses.latitude * ?) * ? * power(sin((businesses.longitude * ? - ?) / 2), 2)
+        )))';
+        $bindings = [$rad, $latitude * $rad, $rad, cos($latitude * $rad), $rad, $longitude * $rad];
+
+        $query->select('businesses.*')->selectRaw("{$distance} as distance_miles", $bindings);
+
+        if ($miles !== null) {
+            $query->whereNotNull('businesses.latitude')
+                ->whereNotNull('businesses.longitude')
+                ->whereRaw("{$distance} <= ?", [...$bindings, $miles]);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Closest first; listings without coordinates go last.
+     *
+     * @param  Builder<Business>  $query
+     * @return Builder<Business>
+     */
+    public function scopeOrderedByDistance(Builder $query): Builder
+    {
+        return $query->orderByRaw('distance_miles IS NULL')->orderBy('distance_miles')->orderByDesc('featured');
     }
 
     // Scope for Tier Priority Sorting (Homepage Spotlight > Featured / Pro > Standard > Free)

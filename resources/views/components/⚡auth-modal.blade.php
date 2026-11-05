@@ -4,6 +4,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -67,7 +68,7 @@ new class extends Component
             return;
         }
 
-        request()->session()->regenerate();
+        Session::regenerate();
 
         $this->reset(['loginEmail', 'loginPassword']);
 
@@ -96,7 +97,7 @@ new class extends Component
 
         Auth::login($user, true);
 
-        request()->session()->regenerate();
+        Session::regenerate();
 
         $this->reset(['registerName', 'registerEmail', 'registerPassword', 'registerPassword_confirmation']);
 

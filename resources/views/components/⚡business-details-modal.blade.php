@@ -88,16 +88,22 @@ new class extends Component
                                 <span>{{ $business->free_parking ? 'Free parking available' : 'No free parking' }}</span>
                             </li>
                         @endif
+                        @if ($business->category === 'Insurance' && filled($business->insurance_types))
+                            <li class="flex items-start gap-2" data-insurance-types>
+                                <i class="fa-solid fa-shield-halved mt-1 text-amber-600"></i>
+                                <span>{{ collect($business->insurance_types)->map(fn ($type) => \App\Models\Business::INSURANCE_TYPES[$type] ?? null)->filter()->implode(', ') }} insurance</span>
+                            </li>
+                        @endif
                         @if ($business->phone)
                             <li class="flex items-center gap-2">
                                 <i class="fa-solid fa-phone text-amber-600"></i>
                                 <a href="tel:{{ $business->phone }}" class="hover:underline">{{ $business->phone }}</a>
                             </li>
                         @endif
-                        @if ($business->canAccessCustomUrl() && $business->website)
+                        @if ($business->websiteLink())
                             <li class="flex items-center gap-2">
                                 <i class="fa-solid fa-globe text-amber-600"></i>
-                                <a href="{{ $business->website }}" target="_blank" rel="noopener noreferrer" class="hover:underline">Visit Website</a>
+                                <a href="{{ $business->websiteLink() }}" target="_blank" rel="noopener noreferrer" class="hover:underline">Visit Website</a>
                             </li>
                         @endif
                     </ul>

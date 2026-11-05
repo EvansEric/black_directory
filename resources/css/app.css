@@ -47,6 +47,10 @@ button, input, select {
     color: #e5e7eb;
 }
 
+.dark .bg-slate-100 {
+    background-color: #334155 !important;
+}
+
 .dark .bg-slate-50,
 .dark .bg-white {
     background-color: #1f2937 !important;

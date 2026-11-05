@@ -106,7 +106,6 @@ it('paginates the business directory six listings at a time and resets on search
     expect($component->instance()->businesses->count())->toBe(6);
 });
 
-
 it('limits how many businesses an owner can add by tier', function () {
     $user = User::factory()->create();
     businessFor($user);

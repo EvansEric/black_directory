@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\Business;
+use App\Services\Geocoder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -11,11 +13,30 @@ new class extends Component
 {
     use WithPagination;
 
+    #[Url]
     public string $search = '';
+    #[Url]
     public string $location = '';
+    #[Url]
     public string $category = 'All';
+    #[Url]
     public string $sortVal = 'featured';
+    #[Url]
     public string $parking = 'any';
+
+    #[Url(as: 'miles')]
+    public string $distance = 'any';
+
+    // The visitor's position, supplied by the browser; never stored.
+    public ?float $userLat = null;
+    public ?float $userLng = null;
+
+    public const DISTANCES = [5, 10, 25, 50, 100];
+
+    #[Url(as: 'insurance')]
+    public string $insuranceType = 'any';
+    #[Url(as: 'saved')]
+    public bool $savedOnly = false;
 
     public array $categories = [
         'All',
@@ -33,6 +54,7 @@ new class extends Component
         'IT & Tech Solutions',
         'Legal & Financial',
         'Insurance',
+        'Security & Protection Services',
         'Marketing & Media',
         'Education & Instruction',
         'Travel & Lodging',
@@ -51,6 +73,14 @@ new class extends Component
             $query->where('category', $this->category);
         }
 
+        if ($this->savedOnly && Auth::check()) {
+            $query->whereIn('businesses.id', Auth::user()->savedBusinesses()->select('businesses.id'));
+        }
+
+        if ($this->category === 'Insurance' && array_key_exists($this->insuranceType, Business::INSURANCE_TYPES)) {
+            $query->offeringInsurance($this->insuranceType);
+        }
+
         if ($this->category === 'Dining & Food' && in_array($this->parking, ['yes', 'no'], true)) {
             $query->withFreeParking($this->parking === 'yes');
         }
@@ -65,19 +95,119 @@ new class extends Component
         }
 
         if (trim($this->location) !== '') {
-            $term = '%' . trim($this->location) . '%';
-            $query->where(function ($q) use ($term) {
+            $raw = trim($this->location);
+            $term = '%' . $raw . '%';
+            $city = app(Geocoder::class)->cityForZip($raw);
+
+            $query->where(function ($q) use ($term, $raw, $city) {
                 $q->where('location', 'like', $term)
-                    ->orWhere('address', 'like', $term);
+                    ->orWhere('address', 'like', $term)
+                    ->orWhere('zip', $raw);
+
+                if ($city) {
+                    $q->orWhere('location', 'like', '%' . $city . '%');
+                }
             });
+        }
+
+        if ($this->hasLocation()) {
+            $query->nearby($this->userLat, $this->userLng, $this->radius());
+        }
+
+        if ($this->sortVal === 'nearest' && $this->hasLocation()) {
+            $query->orderedByDistance();
+
+            return $query->paginate(6);
         }
 
         return $query->orderedByTier($this->sortVal)->paginate(6);
     }
 
+    public function hasLocation(): bool
+    {
+        return $this->userLat !== null && $this->userLng !== null;
+    }
+
+    private function radius(): ?int
+    {
+        return in_array((int) $this->distance, self::DISTANCES, true) ? (int) $this->distance : null;
+    }
+
+    /** Called by the browser once the visitor allows location access. */
+    public function setLocation(float $lat, float $lng): void
+    {
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+            return;
+        }
+
+        $this->userLat = $lat;
+        $this->userLng = $lng;
+
+        // Show the closest businesses first unless the visitor picked another order.
+        if ($this->sortVal === 'featured') {
+            $this->sortVal = 'nearest';
+        }
+
+        $this->resetPage();
+    }
+
+    public function clearLocation(): void
+    {
+        $this->userLat = null;
+        $this->userLng = null;
+        $this->distance = 'any';
+
+        if ($this->sortVal === 'nearest') {
+            $this->sortVal = 'featured';
+        }
+
+        $this->resetPage();
+    }
+
+    /**
+     * IDs of the businesses the current user has saved (empty for guests).
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function savedIds(): array
+    {
+        return Auth::check()
+            ? Auth::user()->savedBusinesses()->pluck('businesses.id')->all()
+            : [];
+    }
+
+    public function toggleSaved(int $businessId): void
+    {
+        if (! Auth::check()) {
+            $this->dispatch('open-auth-modal', tab: 'login');
+
+            return;
+        }
+
+        Auth::user()->savedBusinesses()->toggle(Business::query()->findOrFail($businessId)->getKey());
+
+        unset($this->savedIds, $this->businesses);
+        $this->dispatch('favorites-updated');
+    }
+
+    #[On('toggle-saved-filter')]
+    public function toggleSavedFilter(): void
+    {
+        $this->savedOnly = Auth::check() && ! $this->savedOnly;
+        $this->resetPage();
+    }
+
+    public function showAllBusinesses(): void
+    {
+        $this->savedOnly = false;
+        $this->resetPage();
+        $this->dispatch('saved-filter-changed', active: false);
+    }
+
     public function updated(string $property): void
     {
-        if (in_array($property, ['search', 'location', 'category', 'sortVal', 'parking'], true)) {
+        if (in_array($property, ['search', 'location', 'category', 'sortVal', 'parking', 'insuranceType', 'distance'], true)) {
             $this->resetPage();
         }
     }
@@ -86,13 +216,15 @@ new class extends Component
     {
         $this->category = $category;
         $this->parking = 'any';
+        $this->insuranceType = 'any';
         $this->resetPage();
     }
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'location', 'category', 'sortVal', 'parking']);
+        $this->reset(['search', 'location', 'category', 'sortVal', 'parking', 'insuranceType', 'distance', 'savedOnly']);
         $this->resetPage();
+        $this->dispatch('saved-filter-changed', active: false);
     }
 
     #[On('business-updated')]
@@ -155,11 +287,11 @@ new class extends Component
     </div>
 
     {{-- Category Pills --}}
-    <div class="flex flex-wrap items-center justify-center gap-2 mb-10 text-xs sm:text-sm">
+    <div class="flex flex-wrap items-center justify-center gap-1.5 mb-6 sm:mb-8 text-[11px] sm:text-xs">
         @foreach ($categories as $cat)
             <button
                 wire:click="selectCategory('{{ $cat }}')"
-                class="px-4 py-2 rounded-full font-medium transition duration-200 border {{ $category === $cat ? 'bg-amber-500 text-slate-900 border-amber-500 font-bold shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-slate-900 hover:border-amber-200' }}"
+                class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full font-medium whitespace-nowrap transition duration-200 border {{ $category === $cat ? 'bg-amber-500 text-slate-900 border-amber-500 font-bold shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-slate-900 hover:border-amber-200' }}"
             >
                 {{ $cat }}
             </button>
@@ -184,15 +316,47 @@ new class extends Component
                     <option value="no">No free parking</option>
                 </select>
             @endif
+            @if ($category === 'Insurance')
+                <label for="insurance-type-select" class="text-xs font-semibold text-slate-500"><i class="fa-solid fa-shield-halved mr-1 text-amber-600"></i>Type:</label>
+                <select id="insurance-type-select" wire:model.live="insuranceType" class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <option value="any">All types</option>
+                    @foreach (Business::INSURANCE_TYPES as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            @endif
             @if ($category !== 'All' || trim($search) !== '' || trim($location) !== '')
                 <button type="button" wire:click="resetFilters"
                         class="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-slate-900 transition">
                     <i class="fa-solid fa-xmark mr-1"></i> Clear Filters
                 </button>
             @endif
+            <div x-data="nearMe" class="flex items-center space-x-2" data-near-me>
+                <label for="distance-select" class="text-xs font-semibold text-slate-500"><i class="fa-solid fa-location-crosshairs mr-1 text-amber-600"></i>Distance:</label>
+                <select id="distance-select" wire:model.live="distance" @change="if ($event.target.value !== 'any' && $wire.userLat === null) locate()"
+                        class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <option value="any">Any distance</option>
+                    @foreach ($this::DISTANCES as $miles)
+                        <option value="{{ $miles }}">Within {{ $miles }} miles</option>
+                    @endforeach
+                </select>
+                @if ($this->hasLocation())
+                    <button type="button" wire:click="clearLocation" class="text-xs font-semibold text-slate-500 hover:text-slate-800" title="Stop using my location" data-clear-location>
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                @else
+                    <button type="button" @click="locate()" class="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-amber-50 transition" data-use-location>
+                        <i class="fa-solid fa-location-dot mr-1 text-amber-600"></i><span x-text="busy ? 'Locating…' : 'Use my location'"></span>
+                    </button>
+                @endif
+                <span x-show="error" x-text="error" x-cloak class="text-[11px] text-red-600"></span>
+            </div>
             <label for="sort-select" class="text-xs font-semibold text-slate-500">Sort By:</label>
             <select id="sort-select" wire:model.live="sortVal" class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 <option value="featured">Featured First</option>
+                @if ($this->hasLocation())
+                    <option value="nearest">Nearest First</option>
+                @endif
                 <option value="rating">Highest Rated</option>
                 <option value="name">Name (A-Z)</option>
             </select>
@@ -200,19 +364,16 @@ new class extends Component
     </div>
 
     {{-- Saved filter, nothing saved yet --}}
-    <div
-        x-data
-        x-show="$store.favorites.showOnly && $store.favorites.ids.length === 0"
-        style="display: none;"
-        class="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300"
-    >
-        <div class="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-            <i class="fa-solid fa-heart"></i>
+    @if ($savedOnly && $this->businesses->count() === 0)
+        <div data-saved-empty class="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300">
+            <div class="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-heart"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">No saved businesses yet</h3>
+            <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1 mb-6">Tap the heart icon on any listing to save it here for later.</p>
+            <button type="button" wire:click="showAllBusinesses" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-medium hover:bg-slate-800">Browse All Businesses</button>
         </div>
-        <h3 class="text-lg font-bold text-slate-800">No saved businesses yet</h3>
-        <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1 mb-6">Tap the heart icon on any listing to save it here for later.</p>
-        <button @click="$store.favorites.reset()" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-medium hover:bg-slate-800">Browse All Businesses</button>
-    </div>
+    @endif
 
     {{-- Directory Grid --}}
     @if ($this->businesses->count() > 0)
@@ -221,7 +382,6 @@ new class extends Component
                 <div
                     wire:key="business-{{ $business->id }}"
                     x-data
-                    x-show="!$store.favorites.showOnly || $store.favorites.has({{ $business->id }})"
                     @click="if (! $event.target.closest('a, button')) $dispatch('open-business-details', { businessId: {{ $business->id }} })"
                     class="cursor-pointer bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
                 >
@@ -248,15 +408,15 @@ new class extends Component
                         </div>
 
                         <button
-                            @click.stop="@auth $store.favorites.toggle({{ $business->id }}) @else $dispatch('open-auth-modal', { tab: 'login' }) @endauth"
+                            @click.stop="$wire.toggleSaved({{ $business->id }})"
                             class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white backdrop-blur-md flex items-center justify-center text-slate-700 hover:text-red-500 transition shadow-md"
                             title="{{ auth()->check() ? 'Save business' : 'Log in to save businesses' }}"
                         >
-                            @auth
-                                <i :class="$store.favorites.has({{ $business->id }}) ? 'fa-solid text-red-500' : 'fa-regular'" class="fa-heart text-sm"></i>
+                            @if (in_array($business->id, $this->savedIds, true))
+                                <i class="fa-solid fa-heart text-sm text-red-500"></i>
                             @else
                                 <i class="fa-regular fa-heart text-sm"></i>
-                            @endauth
+                            @endif
                         </button>
 
                         @auth
@@ -302,6 +462,13 @@ new class extends Component
                                 </div>
                             </div>
 
+                            @if ($business->distance_miles !== null)
+                                <span class="inline-flex items-center gap-1.5 mb-3 mr-1 text-[11px] font-semibold rounded-md px-2 py-0.5 bg-amber-50 text-amber-700" data-distance-badge>
+                                    <i class="fa-solid fa-location-dot"></i>
+                                    {{ $business->distance_miles < 0.1 ? 'Less than 0.1' : number_format($business->distance_miles, 1) }} mi away
+                                </span>
+                            @endif
+
                             @if ($business->free_parking !== null && $business->category === 'Dining & Food')
                                 <span class="inline-flex items-center gap-1.5 mb-3 text-[11px] font-semibold rounded-md px-2 py-0.5 {{ $business->free_parking ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}" data-parking-badge>
                                     <i class="fa-solid fa-square-parking"></i>
@@ -313,9 +480,9 @@ new class extends Component
                                 <p class="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{{ $business->description }}</p>
                             @endif
 
-                            @if ($business->canAccessCustomUrl() && $business->website)
+                            @if ($business->websiteLink())
                                 <a
-                                    href="{{ $business->website }}"
+                                    href="{{ $business->websiteLink() }}"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     class="inline-flex items-center gap-1.5 text-xs text-amber-600 font-semibold hover:underline mb-3"

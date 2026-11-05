@@ -8,26 +8,50 @@ document.addEventListener('alpine:init', () => {
         },
     });
 
-    Alpine.store('favorites', {
-        ids: JSON.parse(localStorage.getItem('roots_favorites') || '[]'),
-        showOnly: false,
+    Alpine.data('nearMe', () => ({
+        busy: false,
+        error: '',
 
-        has(id) {
-            return this.ids.includes(id);
+        init() {
+            // Default view is businesses within 5 miles, so ask for the location up front
+            // unless the visitor already blocked it or chose "Any distance".
+            const wanted = () => this.$wire.distance !== 'any' && this.$wire.userLat === null;
+
+            if (!navigator.permissions) {
+                if (wanted()) this.locate();
+                return;
+            }
+
+            navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+                if (status.state !== 'denied' && wanted()) {
+                    this.locate();
+                }
+            }).catch(() => {});
         },
 
-        toggle(id) {
-            this.ids = this.has(id)
-                ? this.ids.filter((existing) => existing !== id)
-                : [...this.ids, id];
+        locate() {
+            if (!navigator.geolocation) {
+                this.error = 'Location is not supported by this browser.';
+                return;
+            }
 
-            localStorage.setItem('roots_favorites', JSON.stringify(this.ids));
-        },
+            this.busy = true;
+            this.error = '';
 
-        reset() {
-            this.showOnly = false;
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    this.busy = false;
+                    this.$wire.setLocation(position.coords.latitude, position.coords.longitude);
+                },
+                () => {
+                    this.busy = false;
+                    this.error = 'Allow location access to see nearby businesses.';
+                    this.$wire.set('distance', 'any');
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+            );
         },
-    });
+    }));
 
     Alpine.data('directorySearch', () => ({
         locating: false,

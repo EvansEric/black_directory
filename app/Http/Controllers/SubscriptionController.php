@@ -82,6 +82,27 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Landing page after Stripe Checkout for a user who had no listing yet.
+     */
+    public function accountSuccess(Request $request, BusinessSubscriptionManager $subscriptions): RedirectResponse
+    {
+        $user = $request->user();
+        $sessionId = $request->query('session_id');
+
+        abort_unless($user !== null, 403);
+
+        if (is_string($sessionId) && $subscriptions->recordAccountCheckout($user, $sessionId)) {
+            $message = $user->businesses()->exists()
+                ? 'Your plan has been upgraded.'
+                : 'Payment received! Create your business listing and your plan will be applied to it.';
+
+            return redirect('/')->with('status', $message);
+        }
+
+        return redirect('/')->with('status', 'Payment received. Your plan will update shortly.');
+    }
+
+    /**
      * Cancel an existing subscription.
      */
     public function cancel(Request $request, BusinessSubscriptionManager $subscriptions): JsonResponse

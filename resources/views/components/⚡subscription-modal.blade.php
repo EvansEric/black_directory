@@ -31,14 +31,32 @@ new class extends Component
                 $this->billingCycle = $this->business->billing_cycle ?? 'monthly';
             }
         } elseif (Auth::check()) {
-            $userBusiness = Auth::user()->businesses()->first();
+            $userBusiness = SubscriptionGating::getOwnerPlanBusiness(Auth::user()) ?? Auth::user()->businesses()->first();
             if ($userBusiness) {
                 $this->businessId = $userBusiness->id;
                 $this->business = $userBusiness;
             }
         }
 
+        // Open on the plan the visitor is already on, unless a specific plan was requested.
+        if (! $tier && ! $businessId && ($current = $this->currentTier()) && $current !== SubscriptionGating::TIER_FREE) {
+            $this->selectedTier = in_array($current, ['standard', 'pro'], true) ? $current : $this->selectedTier;
+            $this->billingCycle = $this->business?->billing_cycle ?? $this->billingCycle;
+        }
+
         $this->dispatch('show-subscription-modal');
+    }
+
+    #[On('business-updated')]
+    #[On('plan-updated')]
+    public function refreshPlan(): void
+    {
+        $this->business = $this->businessId ? Business::find($this->businessId) : null;
+
+        if (Auth::check() && ($current = $this->currentTier()) && in_array($current, ['standard', 'pro'], true)) {
+            $this->selectedTier = $current;
+            $this->billingCycle = $this->business?->billing_cycle ?? $this->billingCycle;
+        }
     }
 
     /** The plan the selected listing (or the owner's best listing) is on, or null for guests. */
@@ -254,7 +272,7 @@ new class extends Component
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'free' ? 'border-amber-500 bg-amber-50/30 shadow-lg' : 'border-slate-200 hover:border-slate-300' }}"
             >
                 @if ($this->currentTier() === 'free')
-                    <span class="absolute -top-3 right-4 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
+                    <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
                 @endif
                 <div>
                     <h4 class="font-bold text-slate-900 text-base mb-1">Free</h4>
@@ -276,7 +294,7 @@ new class extends Component
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'standard' ? 'border-amber-500 bg-amber-50/30 shadow-lg' : 'border-slate-200 hover:border-slate-300' }}"
             >
                 @if ($this->currentTier() === 'standard')
-                    <span class="absolute -top-3 right-4 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
+                    <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
                 @endif
                 <div>
                     <h4 class="font-bold text-slate-900 text-base mb-1">Standard</h4>
@@ -314,7 +332,7 @@ new class extends Component
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'pro' ? 'border-amber-500 bg-amber-50/40 shadow-xl ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300' }}"
             >
                 @if ($this->currentTier() === 'pro')
-                    <span class="absolute -top-3 right-4 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
+                    <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
                 @endif
                 <div class="most-popular-badge absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-md">
                     Most Popular

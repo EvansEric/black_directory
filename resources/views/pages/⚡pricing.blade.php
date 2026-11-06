@@ -66,7 +66,7 @@ class extends Component
                 @foreach ($plans as $plan)
                     <article class="relative flex flex-col justify-between rounded-2xl border-2 p-6 transition {{ ($plan['popular'] ?? false) ? 'border-amber-500 bg-amber-50/40 shadow-xl ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-amber-300' }}">
                         @if ($this->currentTier() === $plan['key'])
-                            <div class="absolute -top-3 right-4 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</div>
+                            <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</div>
                         @endif
 
                         @if ($plan['popular'] ?? false)

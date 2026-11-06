@@ -156,3 +156,70 @@ it('falls back to Free once a downgraded pending plan has lapsed', function () {
 
     expect(SubscriptionGating::getOwnerTier($user))->toBe('free');
 });
+
+it('opens on the owner’s current plan from the Promote Your Listing button', function () {
+    $owner = User::factory()->create();
+    standardListing($owner);
+
+    Livewire::actingAs($owner)->test('subscription-modal')
+        ->call('openSubscriptionModal')
+        ->assertSet('selectedTier', 'standard')
+        ->assertSeeHtml('data-current-plan-badge')
+        ->assertSee('This is your current plan');
+});
+
+it('refreshes the nav and plan modal when a listing changes plan', function () {
+    $owner = User::factory()->create();
+    $business = Business::create([
+        'user_id' => $owner->id, 'name' => 'Shop', 'category' => 'Retail & Fashion',
+        'location' => 'Atlanta, GA', 'description' => 'x',
+    ]);
+
+    $nav = Livewire::actingAs($owner)->test('navigation')->assertSee('Free');
+    $modal = Livewire::actingAs($owner)->test('subscription-modal')
+        ->call('openSubscriptionModal', $business->id);
+
+    $business->update(['subscription_tier' => 'pro', 'billing_cycle' => 'annual', 'subscription_status' => 'active']);
+
+    $nav->dispatch('business-updated')->assertSee('Pro');
+    $modal->dispatch('business-updated')
+        ->assertSet('selectedTier', 'pro')
+        ->assertSet('billingCycle', 'annual')
+        ->assertSee('This is your current plan');
+});
+
+it('uses the checkout tier when two plans share one Stripe price', function () {
+    config(['services.stripe.prices' => [
+        'standard' => ['monthly' => 'price_shared', 'annual' => 'price_std_annual'],
+        'pro' => ['monthly' => 'price_shared', 'annual' => 'price_pro_annual'],
+    ]]);
+
+    $owner = User::factory()->create();
+    $business = standardListing($owner);
+    $manager = app(BusinessSubscriptionManager::class);
+
+    expect($manager->resolvePlan('price_shared'))->toBeNull()
+        ->and($manager->resolvePlan('price_pro_annual'))->toBe(['pro', 'annual']);
+
+    $manager->syncFromStripeSubscription($business, [
+        'status' => 'active',
+        'items' => ['data' => [['price' => ['id' => 'price_shared']]]],
+        'metadata' => ['tier' => 'pro', 'billing_cycle' => 'monthly'],
+        'current_period_end' => now()->addMonth()->timestamp,
+    ]);
+
+    expect($business->fresh()->subscription_tier)->toBe('pro');
+});
+
+it('tags featured and pro listings as Featured in the directory', function () {
+    $owner = User::factory()->create();
+    Business::create(['user_id' => $owner->id, 'name' => 'Flagged Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x', 'featured' => true]);
+
+    Business::create(['user_id' => $owner->id, 'name' => 'Plain Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x']);
+
+    Livewire::test('business-list')
+        ->assertSeeHtml('data-featured-tag')
+        ->assertSee('Flagged Shop');
+
+    expect(substr_count(Livewire::test('business-list')->html(), 'data-featured-tag'))->toBe(1);
+});

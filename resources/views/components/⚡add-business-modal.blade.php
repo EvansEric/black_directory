@@ -3,6 +3,7 @@
 use App\Models\Business;
 use App\Services\BusinessSubscriptionManager;
 use App\Services\Geocoder;
+use App\Services\QrCodeGenerator;
 use App\Services\SubscriptionGating;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -228,6 +229,19 @@ new class extends Component
         return $found ?? ['latitude' => null, 'longitude' => null];
     }
 
+    /** QR code for the custom link when set (it forwards to the website), else the website itself. */
+    public function qrCodeSvg(): ?string
+    {
+        if (! $this->canEditWebsite() || ! filled($this->website)) {
+            return null;
+        }
+
+        $slug = strtolower(trim($this->customSlug));
+        $target = preg_match('/^[a-z0-9-]+$/', $slug) ? route('business.link', $slug) : trim($this->website);
+
+        return app(QrCodeGenerator::class)->svg($target);
+    }
+
     public function canEditWebsite(): bool
     {
         $business = $this->currentBusiness();
@@ -401,18 +415,31 @@ new class extends Component
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Website URL</label>
                 @if ($this->canEditWebsite())
-                    <input type="url" wire:model="website" placeholder="https://example.com"
+                    <input type="url" wire:model.blur="website" placeholder="https://example.com"
                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
                     @error('website') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
 
                     <label class="block text-xs font-semibold text-slate-700 mt-3 mb-1">Custom link (optional)</label>
                     <div class="flex items-center rounded-xl border border-slate-200 text-sm focus-within:ring-2 focus-within:ring-amber-500">
                         <span class="pl-3.5 pr-1 text-slate-400 whitespace-nowrap">{{ rtrim(url('/b'), '/') }}/</span>
-                        <input type="text" wire:model="customSlug" placeholder="my-business" maxlength="60"
+                        <input type="text" wire:model.blur="customSlug" placeholder="my-business" maxlength="60"
                                class="w-full py-2.5 pr-3.5 bg-transparent border-0 text-sm focus:outline-none focus:ring-0">
                     </div>
                     <p class="text-xs text-slate-500 mt-1">Visitors see this link, and it forwards to your website. Use lowercase letters, numbers and dashes.</p>
                     @error('customSlug') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+
+                    @if ($qr = $this->qrCodeSvg())
+                        <div class="mt-3 flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3" data-qr-code>
+                            <img src="data:image/svg+xml;base64,{{ base64_encode($qr) }}" alt="QR code for your link" class="h-24 w-24 shrink-0 rounded-lg bg-white p-1">
+                            <div class="text-xs text-slate-600">
+                                <p class="font-semibold text-slate-800">QR code</p>
+                                <p class="mt-0.5">Scans straight to your {{ filled($customSlug) ? 'custom link' : 'website' }}. Print it on flyers, signs or menus.</p>
+                                <a href="data:image/svg+xml;base64,{{ base64_encode($qr) }}" download="{{ \Illuminate\Support\Str::slug($name ?: 'business') }}-qr.svg" class="mt-1.5 inline-block font-bold text-amber-600 hover:text-amber-500">
+                                    <i class="fa-solid fa-download mr-1"></i>Download SVG
+                                </a>
+                            </div>
+                        </div>
+                    @endif
                 @else
                     <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500">
                         <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Custom link is a Standard-tier feature</span>

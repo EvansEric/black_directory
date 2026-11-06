@@ -168,6 +168,12 @@ class Business extends Model
         return SubscriptionGating::canAccessSpotlight($this);
     }
 
+    /** Listings on a priority plan or flagged as featured get the Featured tag. */
+    public function isFeatured(): bool
+    {
+        return $this->featured || $this->canAccessPrioritySearch();
+    }
+
     public function canAccessPrioritySearch(): bool
     {
         return SubscriptionGating::canAccessPrioritySearch($this);

@@ -28,6 +28,13 @@ new class extends Component
         // Listening re-renders the component so the Saved count stays current.
     }
 
+    #[On('business-updated')]
+    #[On('plan-updated')]
+    public function refreshPlan(): void
+    {
+        // Listening re-renders the component so the Current plan row stays current.
+    }
+
     #[On('saved-filter-changed')]
     public function syncSavedFilter(bool $active): void
     {

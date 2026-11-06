@@ -420,15 +420,15 @@ new class extends Component
                             alt="{{ $business->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                         <div class="absolute inset-0 bg-linear-to-t from-slate-900/60 via-transparent to-transparent"></div>
 
-                        <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                            <span class="bg-slate-900/80 backdrop-blur-md text-amber-400 text-[11px] font-semibold px-2.5 py-1 rounded-lg">{{ $business->category }}</span>
+                        <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5 {{ auth()->check() && auth()->id() === $business->user_id ? 'max-w-[calc(100%-9.5rem)]' : 'max-w-[calc(100%-4.5rem)]' }}">
+                            <span class="max-w-full truncate bg-slate-900/80 backdrop-blur-md text-amber-400 text-[11px] font-semibold px-2.5 py-1 rounded-lg" title="{{ $business->category }}">{{ $business->category }}</span>
                             @if ($business->canAccessSpotlight())
                                 <span class="bg-amber-500 text-slate-950 text-[11px] font-extrabold px-2 py-1 rounded-lg flex items-center gap-1 shadow">
                                     <i class="fa-solid fa-crown text-[9px]"></i> Spotlight
                                 </span>
-                            @elseif ($business->canAccessPrioritySearch())
-                                <span class="bg-amber-400 text-slate-950 text-[11px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-                                    <i class="fa-solid fa-star text-[9px]"></i> Featured Pro
+                            @elseif ($business->isFeatured())
+                                <span class="bg-amber-400 text-slate-950 text-[11px] font-bold px-2 py-1 rounded-lg flex items-center gap-1" data-featured-tag>
+                                    <i class="fa-solid fa-star text-[9px]"></i> Featured
                                 </span>
                             @elseif ($business->subscription_tier === 'standard')
                                 <span class="bg-slate-700 text-white text-[11px] font-semibold px-2 py-1 rounded-lg flex items-center gap-1">

@@ -31,7 +31,7 @@ it('saves the custom link on a new listing for a user with a paid plan', functio
     $user->forceFill(['pending_stripe_session_id' => 'cs_test_paid', 'pending_plan_tier' => 'standard'])->save();
 
     websiteForm(Livewire::actingAs($user)->test('add-business-modal'))
-        ->assertSeeHtml('wire:model="website"')
+        ->assertSeeHtml('wire:model.blur="website"')
         ->call('save')
         ->assertHasNoErrors();
 

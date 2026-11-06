@@ -168,6 +168,11 @@ class BusinessSubscriptionManager
         $subscription = $session['subscription'];
         $business->forceFill(['stripe_id' => $session['customer']])->save();
 
+        $subscription['metadata'] = array_filter([
+            'tier' => $session['metadata']['tier'] ?? null,
+            'billing_cycle' => $session['metadata']['billing_cycle'] ?? null,
+        ]) + ($subscription['metadata'] ?? []);
+
         $this->recordCashierSubscription($business, $subscription);
         $this->syncFromStripeSubscription($business, $subscription);
 
@@ -305,6 +310,11 @@ class BusinessSubscriptionManager
             return false;
         }
 
+        $subscription['metadata'] = array_filter([
+            'tier' => $session['metadata']['tier'] ?? null,
+            'billing_cycle' => $session['metadata']['billing_cycle'] ?? null,
+        ]) + ($subscription['metadata'] ?? []);
+
         $this->recordCashierSubscription($business, $subscription);
         $this->syncFromStripeSubscription($business, $subscription);
 
@@ -355,12 +365,19 @@ class BusinessSubscriptionManager
             return null;
         }
 
+        $matches = [];
+
         foreach (config('services.stripe.prices', []) as $tier => $cycles) {
             foreach ($cycles as $cycle => $id) {
                 if ($id === $priceId) {
-                    return [$tier, $cycle];
+                    $matches[] = [$tier, $cycle];
                 }
             }
+        }
+
+        // A price shared by several plans cannot identify one; callers fall back to checkout metadata.
+        if (count($matches) === 1) {
+            return $matches[0];
         }
 
         return null;

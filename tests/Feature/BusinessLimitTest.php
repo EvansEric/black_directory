@@ -74,22 +74,66 @@ it('still lets owners edit their only business at the limit', function () {
         ->assertHasNoErrors();
 });
 
-it('tells free and standard owners at the limit to upgrade', function () {
-    foreach (['free', 'standard'] as $tier) {
-        $user = limitedOwner($tier);
-        if ($tier === 'free') {
-            submitListing($user, 'First');
-        }
+it('offers free owners Standard features and editing without promising another listing', function () {
+    $user = limitedOwner('free');
+    submitListing($user, 'First')->assertHasNoErrors();
+    $business = $user->businesses()->firstOrFail();
 
-        submitListing($user, 'Another')
-            ->assertHasErrors('name')
-            ->assertSeeHtml('data-business-limit')
-            ->assertSee('allows only 1 business listing. Upgrade to Pro to list up to 5 businesses.')
-            ->assertSeeHtml('data-form-locked')
-            ->assertSeeHtml('data-form-lock-overlay')
-            ->assertSee('This form is locked')
-            ->assertSee('Upgrade to Pro to unlock');
-    }
+    $component = submitListing($user, 'Another')
+        ->assertHasErrors('name')
+        ->assertSeeHtml('data-form-locked')
+        ->assertSeeHtml('data-form-lock-overlay')
+        ->assertSee('Standard adds features to your existing listing, but still allows only 1 listing.')
+        ->assertSee('Upgrade to Standard for more features')
+        ->assertSee('Edit existing listing')
+        ->assertDontSee('Upgrade to Pro')
+        ->assertSeeHtml("tier: 'standard', businessId: {$business->id}");
+
+    $component->call('editBusiness', $business->id)
+        ->assertSet('editingBusinessId', $business->id)
+        ->assertDontSeeHtml('data-form-locked')
+        ->set('city', 'Decatur')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($business->fresh()->city)->toBe('Decatur')
+        ->and($user->businesses()->count())->toBe(1);
+});
+
+it('offers Pro to Standard owners at the listing limit', function () {
+    $user = limitedOwner('standard');
+
+    submitListing($user, 'Another')
+        ->assertHasErrors('name')
+        ->assertSee('allows only 1 business listing. Upgrade to Pro to list up to 5 businesses.')
+        ->assertSee('Upgrade to Pro to unlock');
+});
+
+it('keeps the form locked after a free listing is upgraded to Standard', function () {
+    $user = limitedOwner('free');
+    submitListing($user, 'First')->assertHasNoErrors();
+    $business = $user->businesses()->firstOrFail();
+    $business->update([
+        'subscription_tier' => 'standard',
+        'subscription_status' => 'active',
+    ]);
+
+    submitListing($user, 'Another')
+        ->assertHasErrors('name')
+        ->assertSeeHtml('data-form-locked')
+        ->assertSee('Upgrade to Pro to unlock');
+
+    expect($user->businesses()->count())->toBe(1);
+});
+
+it('selects Standard when requested for a previously paid but expired listing', function () {
+    $user = limitedOwner('pro');
+    $business = $user->businesses()->firstOrFail();
+    $business->update(['subscription_status' => 'canceled', 'subscription_ends_at' => now()->subDay()]);
+
+    Livewire::actingAs($user)->test('subscription-modal')
+        ->call('openSubscriptionModal', $business->id, 'standard')
+        ->assertSet('selectedTier', 'standard');
 });
 
 it('disables the form inputs until the owner upgrades', function () {

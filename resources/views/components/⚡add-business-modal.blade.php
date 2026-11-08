@@ -258,9 +258,14 @@ new class extends Component
     {
         $user = Auth::user();
         $limit = SubscriptionGating::businessLimit($user);
-        $plan = SubscriptionGating::TIERS[SubscriptionGating::getOwnerTier($user)]['name'];
+        $tier = SubscriptionGating::getOwnerTier($user);
+        $plan = SubscriptionGating::TIERS[$tier]['name'];
         $noun = $limit === 1 ? 'listing' : 'listings';
-        $upgrade = $limit === 1 ? 'Upgrade to Pro to list up to 5 businesses.' : 'Upgrade to Spotlight for unlimited listings.';
+        $upgrade = match ($tier) {
+            SubscriptionGating::TIER_FREE => 'Standard adds features to your existing listing, but still allows only 1 listing.',
+            SubscriptionGating::TIER_STANDARD => 'Upgrade to Pro to list up to 5 businesses.',
+            default => 'Upgrade to Spotlight for unlimited listings.',
+        };
 
         return "Your {$plan} plan allows only {$limit} business {$noun}. {$upgrade}";
     }
@@ -312,16 +317,32 @@ new class extends Component
 
         <form wire:submit="save" class="space-y-4">
             @if ($this->atBusinessLimit())
+                @php
+                    $isFreePlan = SubscriptionGating::getOwnerTier(Auth::user()) === SubscriptionGating::TIER_FREE;
+                    $existingBusinessId = Auth::user()->businesses()->value('id');
+                @endphp
                 <div class="flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-amber-900" role="alert" data-form-locked>
                     <i class="fa-solid fa-lock mt-0.5 text-lg text-amber-600"></i>
                     <div class="text-xs">
                         <p class="text-sm font-bold">This form is locked</p>
                         <p class="mt-0.5" data-business-limit>{{ $this->limitMessage() }}</p>
-                        <button type="button" x-data
-                                @click="$dispatch('open-subscription-modal', { tier: 'pro', businessId: {{ Auth::user()->businesses()->value('id') ?? 'null' }} })"
-                                class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
-                            <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Pro to unlock
-                        </button>
+                        @if ($isFreePlan)
+                            <button type="button" wire:click="editBusiness({{ $existingBusinessId }})"
+                                    class="mt-2 rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-white shadow hover:bg-slate-700">
+                                Edit existing listing
+                            </button>
+                            <button type="button"
+                                    @click="open = false; $dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $existingBusinessId }} })"
+                                    class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
+                                <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Standard for more features
+                            </button>
+                        @else
+                            <button type="button" x-data
+                                    @click="$dispatch('open-subscription-modal', { tier: 'pro', businessId: {{ $existingBusinessId ?? 'null' }} })"
+                                    class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
+                                <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Pro to unlock
+                            </button>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -331,7 +352,7 @@ new class extends Component
             @if ($this->atBusinessLimit())
                 <div class="absolute inset-0 z-10 flex cursor-not-allowed items-start justify-center rounded-xl bg-slate-200/40 pt-16" data-form-lock-overlay>
                     <span class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-lg">
-                        <i class="fa-solid fa-lock"></i> Locked until you upgrade to Pro
+                        <i class="fa-solid fa-lock"></i> {{ $isFreePlan ? 'Listing limit reached' : 'Locked until you upgrade to Pro' }}
                     </span>
                 </div>
             @endif
@@ -513,7 +534,7 @@ new class extends Component
                         class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-amber-900/20 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
                         wire:loading.attr="disabled" wire:target="save, image"
                 >
-                    <span wire:loading.remove wire:target="save, image">{{ $this->atBusinessLimit() ? 'Upgrade to Pro to add another business' : ($editingBusinessId ? 'Save Changes' : 'Submit Listing') }}</span>
+                    <span wire:loading.remove wire:target="save, image">{{ $this->atBusinessLimit() ? ($isFreePlan ? 'Listing limit reached' : 'Upgrade to Pro to add another business') : ($editingBusinessId ? 'Save Changes' : 'Submit Listing') }}</span>
                     <span wire:loading wire:target="save, image">{{ $editingBusinessId ? 'Saving...' : 'Submitting...' }}</span>
                 </button>
             </div>

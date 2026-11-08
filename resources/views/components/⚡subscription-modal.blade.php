@@ -38,7 +38,9 @@ new class extends Component
             $this->businessId = $businessId;
             $this->business = Business::find($businessId);
             if ($this->business && in_array($this->business->subscription_tier, ['standard', 'pro'], true)) {
-                $this->selectedTier = $this->business->subscription_tier;
+                if (! $tier) {
+                    $this->selectedTier = $this->business->subscription_tier;
+                }
                 $this->billingCycle = $this->business->billing_cycle ?? 'monthly';
             }
         } elseif (Auth::check()) {

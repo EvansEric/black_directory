@@ -147,6 +147,11 @@ new class extends Component
                                 </span>
                                 <span class="text-[11px] font-semibold text-slate-500">{{ $currentPlan['key'] === 'free' ? 'Upgrade' : 'Manage' }} <i class="fa-solid fa-arrow-right text-[9px]"></i></span>
                             </a>
+                            @if (auth()->user()->is_admin)
+                                <a href="{{ route('admin.businesses.index') }}" class="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fa-solid fa-shield-halved mr-2"></i> Admin panel
+                                </a>
+                            @endif
                             <button
                                 type="button"
                                 wire:click="logout"

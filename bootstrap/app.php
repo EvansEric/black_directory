@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\VerifySubscriptionFeature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'stripe/*',
         ]);
         $middleware->alias([
+            'admin' => EnsureAdmin::class,
             'subscription.feature' => VerifySubscriptionFeature::class,
         ]);
     })

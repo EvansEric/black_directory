@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BusinessVerificationController;
 use App\Http\Controllers\BusinessLinkController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\LeadController;
@@ -12,6 +13,11 @@ Route::livewire('/', 'pages::home')->name('home');
 Route::livewire('/pricing', 'pages::pricing')->name('pricing');
 Route::livewire('/mission', 'pages::mission')->name('mission');
 Route::get('/b/{slug}', BusinessLinkController::class)->where('slug', '[a-z0-9-]+')->name('business.link');
+
+Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/businesses', [BusinessVerificationController::class, 'index'])->name('businesses.index');
+    Route::patch('/businesses/{business}/verification', [BusinessVerificationController::class, 'update'])->name('businesses.verification');
+});
 
 // Subscription Routes
 Route::get('/subscriptions/pricing', [SubscriptionController::class, 'pricing'])->name('subscriptions.pricing');

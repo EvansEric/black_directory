@@ -14,7 +14,7 @@ class extends Component
     #[Computed]
     public function spotlightBusinesses()
     {
-        return Business::query()->spotlight()->latest()->take(3)->get();
+        return Business::query()->where('is_verified', true)->spotlight()->latest()->take(3)->get();
     }
 };
 
@@ -120,9 +120,10 @@ class extends Component
 
     {{-- Main Content --}}
     <main class="mx-auto w-full max-w-7xl grow px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div class="grid grid-cols-1 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_18rem]">
+        <div class="grid grid-cols-1 items-start gap-8 {{ config('app.advertisements_enabled') ? 'xl:grid-cols-[minmax(0,1fr)_18rem]' : '' }}">
             <livewire:business-list />
 
+            @if (config('app.advertisements_enabled'))
             <aside class="w-full xl:sticky xl:top-24" aria-label="Advertisement">
                 <h2 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Advertisement</h2>
                 <div
@@ -134,6 +135,7 @@ class extends Component
                     <p class="mt-2 text-xs leading-relaxed text-slate-500">A dedicated space to reach people supporting local businesses.</p>
                 </div>
             </aside>
+            @endif
         </div>
     </main>
 

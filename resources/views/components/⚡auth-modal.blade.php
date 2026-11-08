@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\PendingPlanSelection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -73,7 +74,7 @@ new class extends Component
         $this->reset(['loginEmail', 'loginPassword']);
 
         // Force a fresh page load so every component re-evaluates auth state.
-        $this->redirect(request()->header('Referer') ?? '/');
+        $this->redirect($this->afterAuthenticationUrl());
     }
 
     public function register(): void
@@ -101,7 +102,19 @@ new class extends Component
 
         $this->reset(['registerName', 'registerEmail', 'registerPassword', 'registerPassword_confirmation']);
 
-        $this->redirect(request()->header('Referer') ?? '/');
+        $this->redirect($this->afterAuthenticationUrl());
+    }
+
+    public function cancel(): void
+    {
+        app(PendingPlanSelection::class)->forget();
+    }
+
+    private function afterAuthenticationUrl(): string
+    {
+        return app(PendingPlanSelection::class)->exists()
+            ? route('pricing')
+            : (request()->header('Referer') ?? '/');
     }
 }; ?>
 
@@ -117,10 +130,10 @@ new class extends Component
     x-transition:leave-end="opacity-0"
     class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
     style="display: none;"
-    @keydown.escape.window="open = false"
+    @keydown.escape.window="if (open) { open = false; $wire.cancel() }"
 >
-    <div @click.away="open = false" class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
-        <button @click="open = false" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
+    <div @click.away="if (open) { open = false; $wire.cancel() }" class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+        <button @click="open = false; $wire.cancel()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
             <i class="fa-solid fa-xmark text-xl"></i>
         </button>
 

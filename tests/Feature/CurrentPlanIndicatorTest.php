@@ -12,6 +12,7 @@ uses(RefreshDatabase::class);
 function standardListing(User $owner): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => 'Std Shop', 'category' => 'Retail & Fashion',
         'location' => 'Atlanta, GA', 'description' => 'x',
         'subscription_tier' => 'standard', 'billing_cycle' => 'monthly',
@@ -92,6 +93,7 @@ it('shows the time left on a paid plan before downgrading to free', function () 
 it('does not show a downgrade notice for businesses on the free plan', function () {
     $owner = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => 'Free Shop', 'category' => 'Retail & Fashion',
         'location' => 'Atlanta, GA', 'description' => 'x',
     ]);
@@ -171,6 +173,7 @@ it('opens on the owner’s current plan from the Promote Your Listing button', f
 it('refreshes the nav and plan modal when a listing changes plan', function () {
     $owner = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => 'Shop', 'category' => 'Retail & Fashion',
         'location' => 'Atlanta, GA', 'description' => 'x',
     ]);
@@ -213,9 +216,9 @@ it('uses the checkout tier when two plans share one Stripe price', function () {
 
 it('tags featured and pro listings as Featured in the directory', function () {
     $owner = User::factory()->create();
-    Business::create(['user_id' => $owner->id, 'name' => 'Flagged Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x', 'featured' => true]);
+    Business::create(['is_verified' => true, 'user_id' => $owner->id, 'name' => 'Flagged Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x', 'featured' => true]);
 
-    Business::create(['user_id' => $owner->id, 'name' => 'Plain Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x']);
+    Business::create(['is_verified' => true, 'user_id' => $owner->id, 'name' => 'Plain Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x']);
 
     Livewire::test('business-list')
         ->assertSeeHtml('data-featured-tag')

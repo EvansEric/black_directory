@@ -46,6 +46,7 @@ it('drops insurance types for non-insurance categories', function () {
 it('loads and updates insurance types when editing', function () {
     $user = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id, 'name' => 'Safe Harbor', 'category' => 'Insurance',
         'location' => 'Atlanta, GA', 'city' => 'Atlanta', 'state' => 'GA',
         'description' => 'Cover.', 'insurance_types' => ['life'],
@@ -70,6 +71,7 @@ it('renders the insurance type checkboxes in the form', function () {
 it('filters insurance listings by type only within the insurance category', function () {
     $owner = User::factory()->create();
     $make = fn (string $name, string $category, ?array $types) => Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => $name, 'category' => $category,
         'location' => 'Atlanta, GA', 'description' => 'x', 'insurance_types' => $types,
     ]);
@@ -93,6 +95,7 @@ it('filters insurance listings by type only within the insurance category', func
 it('supports the Security & Protection Services category', function () {
     $owner = User::factory()->create();
     Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => 'Guardian Security', 'category' => 'Security & Protection Services',
         'location' => 'Atlanta, GA', 'description' => 'Armed and unarmed guards.',
     ]);

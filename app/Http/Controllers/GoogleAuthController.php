@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\GoogleAuthenticator;
+use App\Services\PendingPlanSelection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
@@ -35,6 +36,10 @@ class GoogleAuthController extends Controller
 
         Auth::login($user, remember: true);
         request()->session()->regenerate();
+
+        if (app(PendingPlanSelection::class)->exists()) {
+            return redirect()->route('pricing');
+        }
 
         return redirect()->intended(route('home'));
     }

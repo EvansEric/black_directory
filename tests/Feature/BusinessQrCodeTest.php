@@ -12,6 +12,7 @@ function paidListing(): array
 {
     $owner = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => 'Qr Shop', 'category' => 'Retail & Fashion',
         'location' => 'Atlanta, GA', 'description' => 'x',
         'subscription_tier' => 'standard', 'subscription_status' => 'active', 'subscription_ends_at' => now()->addMonth(),
@@ -59,6 +60,7 @@ it('encodes the custom link when one is set', function () {
 it('shows no QR code to free listings', function () {
     $owner = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => 'Free', 'category' => 'Retail & Fashion',
         'location' => 'Atlanta, GA', 'description' => 'x',
     ]);

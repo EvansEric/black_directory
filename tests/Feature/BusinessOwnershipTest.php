@@ -10,6 +10,7 @@ uses(RefreshDatabase::class);
 function ownedListing(User $owner): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id,
         'name' => 'Owner Shop',
         'category' => 'Retail & Fashion',

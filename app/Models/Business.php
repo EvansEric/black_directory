@@ -35,6 +35,7 @@ class Business extends Model
         'rating',
         'reviews_count',
         'featured',
+        'is_verified',
         'tags',
         'free_parking',
         'insurance_types',
@@ -68,6 +69,7 @@ class Business extends Model
     protected $casts = [
         'tags' => 'array',
         'featured' => 'boolean',
+        'is_verified' => 'boolean',
         'free_parking' => 'boolean',
         'insurance_types' => 'array',
         'latitude' => 'float',
@@ -266,6 +268,24 @@ class Business extends Model
      * @param  Builder<Business>  $query
      * @return Builder<Business>
      */
+    /**
+     * Unverified listings are only visible to their owner and admins.
+     */
+    public function scopeVisibleTo(Builder $query, ?User $user): Builder
+    {
+        if ($user?->is_admin) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            $q->where('businesses.is_verified', true);
+
+            if ($user) {
+                $q->orWhere('businesses.user_id', $user->id);
+            }
+        });
+    }
+
     public function scopeSpotlight(Builder $query): Builder
     {
         return $query->where(function ($q) {

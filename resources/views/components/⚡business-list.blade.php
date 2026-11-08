@@ -67,7 +67,7 @@ new class extends Component
     #[Computed]
     public function businesses()
     {
-        $query = Business::query();
+        $query = Business::query()->visibleTo(Auth::user());
 
         if ($this->category !== 'All') {
             $query->where('category', $this->category);
@@ -448,6 +448,10 @@ new class extends Component
                                 <i class="fa-regular fa-heart text-sm"></i>
                             @endif
                         </button>
+
+                        @unless ($business->is_verified)
+                            <span class="absolute bottom-3 left-3 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-slate-950 shadow-md">Pending verification</span>
+                        @endunless
 
                         @auth
                             @if (auth()->id() === $business->user_id)

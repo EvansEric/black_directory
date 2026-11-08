@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\SubscriptionGating;
+use App\Services\PendingPlanSelection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -11,6 +12,8 @@ new
 #[Title('Listing Plans & Pricing | Noir Directory')]
 class extends Component
 {
+    public ?array $resumePlan = null;
+
     public array $plans = [
         [
             'key' => 'free',
@@ -39,13 +42,24 @@ class extends Component
         ],
     ];
 
+    public function mount(PendingPlanSelection $selection): void
+    {
+        if (Auth::check()) {
+            $this->resumePlan = $selection->pull();
+        }
+    }
+
     public function currentTier(): ?string
     {
         return Auth::check() ? SubscriptionGating::getOwnerTier(Auth::user()) : null;
     }
 }; ?>
 
-<div class="flex min-h-screen flex-col bg-white">
+<div class="flex min-h-screen flex-col bg-white"
+    @if ($resumePlan)
+        x-data x-init="$nextTick(() => $dispatch('open-subscription-modal', { tier: @js($resumePlan['tier']), cycle: @js($resumePlan['cycle']) }))"
+    @endif
+>
     <livewire:navigation />
 
     <main class="grow">

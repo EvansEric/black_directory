@@ -13,6 +13,7 @@ function limitedOwner(string $tier): User
 
     if ($tier !== 'free') {
         Business::create([
+            'is_verified' => true,
             'user_id' => $user->id, 'name' => 'Existing', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA',
             'description' => 'x', 'subscription_tier' => $tier, 'subscription_status' => 'active',
             'subscription_ends_at' => now()->addMonth(),

@@ -12,7 +12,7 @@ class BusinessLinkController extends Controller
      */
     public function __invoke(string $slug): RedirectResponse
     {
-        $business = Business::query()->where('custom_slug', $slug)->first();
+        $business = Business::query()->where('custom_slug', $slug)->where('is_verified', true)->first();
 
         abort_unless($business && $business->canAccessCustomUrl() && filled($business->website), 404);
 

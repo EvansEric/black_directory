@@ -13,6 +13,7 @@ uses(RefreshDatabase::class);
 function nearbyListing(string $name, ?float $lat, ?float $lng): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => User::factory()->create()->id, 'name' => $name, 'category' => 'Retail & Fashion',
         'location' => 'Somewhere, GA', 'description' => 'x', 'latitude' => $lat, 'longitude' => $lng,
     ]);

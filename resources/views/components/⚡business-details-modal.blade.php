@@ -2,6 +2,7 @@
 
 use App\Models\Business;
 use App\Services\GoogleMapsEmbed;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -12,7 +13,7 @@ new class extends Component
     #[On('open-business-details')]
     public function open(int $businessId): void
     {
-        $this->business = Business::query()->findOrFail($businessId);
+        $this->business = Business::query()->visibleTo(Auth::user())->findOrFail($businessId);
 
         $this->dispatch('show-business-details');
     }

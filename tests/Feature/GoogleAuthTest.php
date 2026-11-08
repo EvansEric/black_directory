@@ -56,6 +56,17 @@ it('creates and logs in a new user from Google', function () {
     $this->assertAuthenticatedAs($user);
 });
 
+it('returns to the selected plan after Google sign-in', function () {
+    mockGoogle(fakeGoogleUser('g-plan', 'plan@example.com'));
+
+    $this->withSession(['pending_plan_selection' => ['tier' => 'pro', 'cycle' => 'annual']])
+        ->get(route('auth.google.callback'))
+        ->assertRedirect(route('pricing'));
+
+    $this->assertAuthenticated();
+    expect(session('pending_plan_selection'))->toBe(['tier' => 'pro', 'cycle' => 'annual']);
+});
+
 it('logs in an existing Google user without creating a duplicate', function () {
     $user = User::factory()->create(['google_id' => 'g-2', 'email' => 'back@example.com']);
     mockGoogle(fakeGoogleUser('g-2', 'back@example.com'));

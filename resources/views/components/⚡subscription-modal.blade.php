@@ -3,6 +3,7 @@
 use App\Models\Business;
 use App\Models\User;
 use App\Services\BusinessSubscriptionManager;
+use App\Services\PendingPlanSelection;
 use App\Services\SubscriptionGating;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -17,10 +18,20 @@ new class extends Component
     public string $billingCycle = 'monthly';
 
     #[On('open-subscription-modal')]
-    public function openSubscriptionModal(?int $businessId = null, ?string $tier = null): void
+    public function openSubscriptionModal(?int $businessId = null, ?string $tier = null, ?string $cycle = null): void
     {
         if ($tier && in_array($tier, ['free', 'standard', 'pro'], true)) {
             $this->selectedTier = $tier;
+        }
+
+        if ($cycle && in_array($cycle, ['monthly', 'annual'], true)) {
+            $this->billingCycle = $cycle;
+        }
+
+        if (! Auth::check() && in_array($tier, ['standard', 'pro'], true)) {
+            $this->requireAccount();
+
+            return;
         }
 
         if ($businessId) {
@@ -168,7 +179,11 @@ new class extends Component
     public function checkout(BusinessSubscriptionManager $subscriptions): mixed
     {
         if (! Auth::check()) {
-            $this->dispatch('open-auth-modal');
+            $this->validate([
+                'selectedTier' => ['required', 'in:free,standard,pro'],
+                'billingCycle' => ['required', 'in:monthly,annual'],
+            ]);
+            $this->requireAccount();
 
             return null;
         }
@@ -210,6 +225,18 @@ new class extends Component
         $checkout = $subscriptions->createCheckout($business, $this->selectedTier, $this->billingCycle);
 
         return redirect()->away($checkout['url'], 303);
+    }
+
+    private function requireAccount(): void
+    {
+        if (in_array($this->selectedTier, ['standard', 'pro'], true)) {
+            app(PendingPlanSelection::class)->remember($this->selectedTier, $this->billingCycle);
+        } else {
+            app(PendingPlanSelection::class)->forget();
+        }
+
+        $this->dispatch('close-subscription-modal');
+        $this->dispatch('open-auth-modal');
     }
 }; ?>
 

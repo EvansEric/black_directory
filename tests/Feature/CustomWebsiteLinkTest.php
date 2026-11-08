@@ -51,6 +51,7 @@ it('rejects non-http links', function () {
 it('shows the visit website link only on paid listings', function () {
     $owner = User::factory()->create();
     $make = fn (string $name, string $tier) => Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id, 'name' => $name, 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA',
         'description' => 'x', 'website' => 'https://'.strtolower($name).'.example.com',
         'subscription_tier' => $tier, 'subscription_status' => 'active', 'subscription_ends_at' => now()->addMonth(),
@@ -66,6 +67,7 @@ it('shows the visit website link only on paid listings', function () {
 function slugBusiness(array $overrides = []): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => User::factory()->create()->id, 'name' => 'Slug Shop', 'category' => 'Retail & Fashion',
         'location' => 'Atlanta, GA', 'description' => 'x', 'website' => 'https://real.example.com',
         'custom_slug' => 'slug-shop', 'subscription_tier' => 'standard', 'subscription_status' => 'active',

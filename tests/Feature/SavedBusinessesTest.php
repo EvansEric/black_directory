@@ -10,6 +10,7 @@ uses(RefreshDatabase::class);
 function savedListing(string $name): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => User::factory()->create()->id,
         'name' => $name,
         'category' => 'Retail & Fashion',

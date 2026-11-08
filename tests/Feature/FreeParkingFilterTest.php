@@ -10,6 +10,7 @@ uses(RefreshDatabase::class);
 function makeListing(string $name, string $category, ?bool $parking): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => User::factory()->create()->id,
         'name' => $name,
         'category' => $category,
@@ -90,6 +91,7 @@ it('lets an owner set free parking for a food business and clears it for other c
 it('loads and updates free parking when editing a listing', function () {
     $owner = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id,
         'name' => 'Edit Diner',
         'category' => 'Dining & Food',

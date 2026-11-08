@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string $email
  * @property string|null $google_id
+ * @property bool $is_admin
  * @property string|null $pending_stripe_session_id
  * @property string|null $pending_plan_tier
  * @property string|null $pending_billing_cycle
@@ -44,6 +45,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'is_admin' => 'boolean',
             'pending_plan_ends_at' => 'datetime',
             'password' => 'hashed',
         ];

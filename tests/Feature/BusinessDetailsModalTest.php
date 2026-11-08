@@ -8,6 +8,7 @@ use Livewire\Livewire;
 function makeBusiness(array $overrides = []): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => User::factory()->create()->id,
         'name' => 'Noir Coffee',
         'category' => 'Dining & Food',

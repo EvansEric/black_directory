@@ -26,6 +26,7 @@ test('models support camelCase subscription properties and snake_case attributes
     $user = User::factory()->create();
 
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Acme Supplies',
         'category' => 'Professional Services',
@@ -47,6 +48,7 @@ test('feature gating correctly permits or gates features based on active tier', 
     $user = User::factory()->create();
 
     $freeBusiness = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Free Shop',
         'category' => 'Retail & Fashion',
@@ -57,6 +59,7 @@ test('feature gating correctly permits or gates features based on active tier', 
     ]);
 
     $standardBusiness = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Standard Shop',
         'category' => 'Retail & Fashion',
@@ -67,6 +70,7 @@ test('feature gating correctly permits or gates features based on active tier', 
     ]);
 
     $proBusiness = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Pro Shop',
         'category' => 'Retail & Fashion',
@@ -77,6 +81,7 @@ test('feature gating correctly permits or gates features based on active tier', 
     ]);
 
     $spotlightBusiness = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Spotlight Shop',
         'category' => 'Retail & Fashion',
@@ -116,6 +121,7 @@ test('middleware gates endpoints based on feature entitlement', function () {
     $user = User::factory()->create();
 
     $standardBusiness = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Standard Cafe',
         'category' => 'Dining & Food',
@@ -126,6 +132,7 @@ test('middleware gates endpoints based on feature entitlement', function () {
     ]);
 
     $proBusiness = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Pro Cafe',
         'category' => 'Dining & Food',
@@ -158,6 +165,7 @@ test('middleware gates endpoints based on feature entitlement', function () {
 test('subscription checkout and cancellation routes work', function () {
     $user = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Test Business',
         'category' => 'Dining & Food',
@@ -228,6 +236,7 @@ test('subscription cancellation requires the authenticated business owner', func
     $owner = User::factory()->create();
     $otherUser = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id,
         'name' => 'Owner-Only Subscription',
         'category' => 'Dining & Food',
@@ -256,6 +265,7 @@ test('subscription cancellation requires the authenticated business owner', func
 test('stripe webhook handles subscription updates, deletions, and payment failures', function () {
     $user = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Webhook Test Business',
         'category' => 'Dining & Food',
@@ -326,6 +336,7 @@ test('listings search and directory queries order results by tier priority', fun
     $user = User::factory()->create();
 
     $free = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'A Free Business',
         'category' => 'Tech',
@@ -337,6 +348,7 @@ test('listings search and directory queries order results by tier priority', fun
     ]);
 
     $standard = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'B Standard Business',
         'category' => 'Tech',
@@ -348,6 +360,7 @@ test('listings search and directory queries order results by tier priority', fun
     ]);
 
     $pro = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'C Pro Business',
         'category' => 'Tech',
@@ -359,6 +372,7 @@ test('listings search and directory queries order results by tier priority', fun
     ]);
 
     $spotlight = Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'D Spotlight Business',
         'category' => 'Tech',
@@ -394,6 +408,7 @@ it('syncs the plan from a Stripe subscription object', function () {
 
     $owner = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id,
         'name' => 'Sync Co',
         'category' => 'Retail',
@@ -413,6 +428,7 @@ it('syncs the plan from a Stripe subscription object', function () {
 
 it('only lets the listing owner use the checkout success page', function () {
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => User::factory()->create()->id,
         'name' => 'Owned Co',
         'category' => 'Retail',
@@ -428,6 +444,7 @@ it('only lets the listing owner use the checkout success page', function () {
 it('shows time left on a paid plan and keeps it until a downgrade takes effect', function () {
     $owner = User::factory()->create();
     $business = Business::create([
+        'is_verified' => true,
         'user_id' => $owner->id,
         'name' => 'Paid Co',
         'category' => 'Retail',

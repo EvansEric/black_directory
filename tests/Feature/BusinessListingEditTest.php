@@ -7,6 +7,7 @@ use Livewire\Livewire;
 function businessFor(User $user, array $attributes = []): Business
 {
     return Business::create([
+        'is_verified' => true,
         'user_id' => $user->id,
         'name' => 'Original Business',
         'category' => 'Dining & Food',

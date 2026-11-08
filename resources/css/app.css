@@ -69,6 +69,11 @@ button, input, select {
     background-color: rgb(120 53 15 / 0.2) !important;
 }
 
+/* The substring match above also catches bg-amber-500; keep solid amber surfaces readable. */
+.dark [class*="bg-amber-500"]:not([class*="/"]) {
+    background-color: #f59e0b !important;
+}
+
 .dark [class*="bg-amber-950"] {
     background-color: rgb(120 53 15 / 0.2) !important;
 }

@@ -2,6 +2,7 @@
 
 use App\Models\Business;
 use App\Services\BusinessSubscriptionManager;
+use App\Services\BusinessDescription;
 use App\Services\Geocoder;
 use App\Services\QrCodeGenerator;
 use App\Services\SubscriptionGating;
@@ -112,9 +113,18 @@ new class extends Component
 
         $data = [...$data, ...$this->coordinatesFor($data, $existingBusiness)];
 
-        if (! SubscriptionGating::canAccessLogo($existingBusiness)) {
+        if (! $this->canEditLogo()) {
             $this->image = null;
         }
+
+        if ($existingBusiness && ! $this->canEditRichDescription() && $existingBusiness->has_rich_description
+            && $data['description'] === app(BusinessDescription::class)->plainText($existingBusiness)) {
+            $data['description'] = $existingBusiness->description;
+        }
+
+        $data['has_rich_description'] = $existingBusiness && $data['description'] === $existingBusiness->description
+            ? $existingBusiness->has_rich_description
+            : $this->canEditRichDescription();
 
         if ($this->editingBusinessId) {
             $business = $existingBusiness;
@@ -193,7 +203,9 @@ new class extends Component
         $this->freeParking = $business->free_parking === null ? '' : ($business->free_parking ? '1' : '0');
         $this->insuranceTypes = $business->insurance_types ?? [];
         $this->image = null;
-        $this->description = $business->description;
+        $this->description = $business->has_rich_description && ! SubscriptionGating::canAccessDescription($business)
+            ? app(BusinessDescription::class)->plainText($business)
+            : $business->description;
         $this->resetValidation();
     }
 
@@ -279,7 +291,20 @@ new class extends Component
 
     public function canEditLogo(): bool
     {
-        return SubscriptionGating::canAccessLogo($this->currentBusiness());
+        $business = $this->currentBusiness();
+
+        return $business
+            ? SubscriptionGating::canAccessLogo($business)
+            : Auth::check() && SubscriptionGating::getOwnerTier(Auth::user()) !== SubscriptionGating::TIER_FREE;
+    }
+
+    public function canEditRichDescription(): bool
+    {
+        $business = $this->currentBusiness();
+
+        return $business
+            ? SubscriptionGating::canAccessDescription($business)
+            : Auth::check() && SubscriptionGating::getOwnerTier(Auth::user()) !== SubscriptionGating::TIER_FREE;
     }
 
     private function currentBusiness(): ?Business
@@ -520,9 +545,30 @@ new class extends Component
                 @endif
             </div>
 
-            <div>
+            <div x-data="{
+                format(prefix, suffix = '') {
+                    const input = this.$refs.description;
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const selected = input.value.slice(start, end);
+                    input.setRangeText(prefix + selected + suffix, start, end, 'select');
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.focus();
+                }
+            }">
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Business Description *</label>
-                <textarea wire:model="description" rows="3" placeholder="Tell customers about your mission, services, or products..."
+                @if ($this->canEditRichDescription())
+                    <div class="mb-2 flex flex-wrap gap-2" aria-label="Description formatting">
+                        <button type="button" @click="format('**', '**')" class="rounded border border-slate-300 px-2 py-1 text-xs font-bold" aria-label="Bold">Bold</button>
+                        <button type="button" @click="format('*', '*')" class="rounded border border-slate-300 px-2 py-1 text-xs italic" aria-label="Italic">Italic</button>
+                        <button type="button" @click="format('\n\n- ')" class="rounded border border-slate-300 px-2 py-1 text-xs" aria-label="Add bullet list item">Bullet list</button>
+                        <button type="button" @click="format('\n\n1. ')" class="rounded border border-slate-300 px-2 py-1 text-xs" aria-label="Add numbered list item">Numbered list</button>
+                    </div>
+                    <p class="mb-2 text-xs text-slate-500">Select text to format it. Separate paragraphs and lists with a blank line.</p>
+                @else
+                    <p class="mb-2 text-xs text-slate-500">Plain text. Upgrade to Standard to format your description.</p>
+                @endif
+                <textarea x-ref="description" wire:model="description" rows="3" placeholder="Tell customers about your mission, services, or products..."
                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
                 @error('description') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>

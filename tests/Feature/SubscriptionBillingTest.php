@@ -49,7 +49,7 @@ test('feature gating correctly permits or gates features based on active tier', 
 
     $freeBusiness = Business::create([
         'is_verified' => true,
-        'user_id' => $user->id,
+        'user_id' => User::factory()->create()->id,
         'name' => 'Free Shop',
         'category' => 'Retail & Fashion',
         'location' => 'Decatur, GA',
@@ -107,6 +107,7 @@ test('feature gating correctly permits or gates features based on active tier', 
     // Pro Tier Gating Checks
     expect(canAccessLogo($proBusiness))->toBeTrue();
     expect(canAccessCustomUrl($proBusiness))->toBeTrue();
+    expect(canAccessDescription($proBusiness))->toBeTrue();
     expect(canAccessLeadForms($proBusiness))->toBeTrue();
     expect(canAccessSpotlight($proBusiness))->toBeFalse();
 

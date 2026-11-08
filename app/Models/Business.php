@@ -32,6 +32,7 @@ class Business extends Model
         'custom_slug',
         'image',
         'description',
+        'has_rich_description',
         'rating',
         'reviews_count',
         'featured',
@@ -69,6 +70,7 @@ class Business extends Model
     protected $casts = [
         'tags' => 'array',
         'featured' => 'boolean',
+        'has_rich_description' => 'boolean',
         'is_verified' => 'boolean',
         'free_parking' => 'boolean',
         'insurance_types' => 'array',

@@ -74,8 +74,12 @@ new class extends Component
                         </div>
                     </div>
 
-                    @if ($business->canAccessDescription() && $business->description)
-                        <p class="text-sm leading-relaxed text-slate-600">{{ $business->description }}</p>
+                    @if ($business->description)
+                        @if ($business->has_rich_description && $business->canAccessDescription())
+                            <div class="text-sm leading-relaxed text-slate-600 [&_p+p]:mt-3 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5" data-rich-description>{!! app(\App\Services\BusinessDescription::class)->formatted($business) !!}</div>
+                        @else
+                            <p class="whitespace-pre-line text-sm leading-relaxed text-slate-600">{{ app(\App\Services\BusinessDescription::class)->plainText($business) }}</p>
+                        @endif
                     @endif
 
                     <ul class="space-y-2 text-sm text-slate-600">

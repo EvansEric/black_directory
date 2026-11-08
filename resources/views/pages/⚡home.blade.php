@@ -14,7 +14,7 @@ class extends Component
     #[Computed]
     public function spotlightBusinesses()
     {
-        return Business::query()->where('is_verified', true)->spotlight()->latest()->take(3)->get();
+        return Business::query()->with('user.businesses')->where('is_verified', true)->spotlight()->latest()->take(3)->get();
     }
 };
 
@@ -93,7 +93,7 @@ class extends Component
                                         <p class="text-xs text-amber-600 font-semibold">{{ $spotlight->category }} • {{ $spotlight->location }}</p>
                                     </div>
                                 </div>
-                                <p class="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed">{{ $spotlight->description }}</p>
+                                <p class="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed">{{ app(\App\Services\BusinessDescription::class)->plainText($spotlight) }}</p>
                             </div>
                             <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
                                 @if ($spotlight->canAccessCustomUrl() && $spotlight->website)

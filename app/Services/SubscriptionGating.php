@@ -125,9 +125,7 @@ class SubscriptionGating
      */
     public static function canAccessLogo(?Business $listing): bool
     {
-        $tier = self::getEffectiveTier($listing);
-
-        return in_array($tier, [self::TIER_STANDARD, self::TIER_PRO, self::TIER_SPOTLIGHT], true);
+        return self::hasStandardFeatures($listing);
     }
 
     /**
@@ -135,9 +133,7 @@ class SubscriptionGating
      */
     public static function canAccessCustomUrl(?Business $listing): bool
     {
-        $tier = self::getEffectiveTier($listing);
-
-        return in_array($tier, [self::TIER_STANDARD, self::TIER_PRO, self::TIER_SPOTLIGHT], true);
+        return self::hasStandardFeatures($listing);
     }
 
     /**
@@ -145,9 +141,28 @@ class SubscriptionGating
      */
     public static function canAccessDescription(?Business $listing): bool
     {
-        $tier = self::getEffectiveTier($listing);
+        return self::hasStandardFeatures($listing);
+    }
 
-        return in_array($tier, [self::TIER_STANDARD, self::TIER_PRO, self::TIER_SPOTLIGHT], true);
+    private static function hasStandardFeatures(?Business $listing): bool
+    {
+        if (! $listing) {
+            return false;
+        }
+
+        if (in_array(self::getEffectiveTier($listing), [self::TIER_STANDARD, self::TIER_PRO, self::TIER_SPOTLIGHT], true)) {
+            return true;
+        }
+
+        if (! $listing->exists) {
+            return false;
+        }
+
+        $listing->loadMissing('user.businesses');
+
+        return $listing->user?->businesses->contains(
+            fn (Business $business): bool => in_array(self::getEffectiveTier($business), [self::TIER_PRO, self::TIER_SPOTLIGHT], true)
+        ) ?? false;
     }
 
     /**

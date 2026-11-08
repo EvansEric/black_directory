@@ -67,7 +67,7 @@ new class extends Component
     #[Computed]
     public function businesses()
     {
-        $query = Business::query()->visibleTo(Auth::user());
+        $query = Business::query()->with('user.businesses')->visibleTo(Auth::user());
 
         if ($this->category !== 'All') {
             $query->where('category', $this->category);
@@ -510,8 +510,8 @@ new class extends Component
                                 </span>
                             @endif
 
-                            @if ($business->canAccessDescription())
-                                <p class="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{{ $business->description }}</p>
+                            @if ($business->description)
+                                <p class="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{{ app(\App\Services\BusinessDescription::class)->plainText($business) }}</p>
                             @endif
 
                             @if ($business->websiteLink())

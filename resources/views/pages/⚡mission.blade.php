@@ -34,7 +34,7 @@ class extends Component {};
 
                 <figure class="relative min-h-72 overflow-hidden rounded-lg bg-amber-100 sm:min-h-96 lg:col-span-5 lg:min-h-[34rem]">
                     <img
-                        src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=85"
+                        src="{{ asset('images/mission_image.jpeg') }}"
                         alt="Neighbors sharing a meal around a table"
                         class="absolute inset-0 h-full w-full object-cover"
                         loading="lazy"

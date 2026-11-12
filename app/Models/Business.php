@@ -137,6 +137,10 @@ class Business extends Model
 
     public function canAccessLogo(): bool
     {
+        if ($this->user?->is_admin) {
+            return true;
+        }
+
         return SubscriptionGating::canAccessLogo($this);
     }
 
@@ -154,21 +158,37 @@ class Business extends Model
 
     public function canAccessCustomUrl(): bool
     {
+        if ($this->user?->is_admin) {
+            return true;
+        }
+
         return SubscriptionGating::canAccessCustomUrl($this);
     }
 
     public function canAccessDescription(): bool
     {
+        if ($this->user?->is_admin) {
+            return true;
+        }
+
         return SubscriptionGating::canAccessDescription($this);
     }
 
     public function canAccessLeadForms(): bool
     {
+        if ($this->user?->is_admin) {
+            return true;
+        }
+
         return SubscriptionGating::canAccessLeadForms($this);
     }
 
     public function canAccessSpotlight(): bool
     {
+        if ($this->user?->is_admin) {
+            return true;
+        }
+
         return SubscriptionGating::canAccessSpotlight($this);
     }
 
@@ -180,6 +200,10 @@ class Business extends Model
 
     public function canAccessPrioritySearch(): bool
     {
+        if ($this->user?->is_admin) {
+            return true;
+        }
+
         return SubscriptionGating::canAccessPrioritySearch($this);
     }
 

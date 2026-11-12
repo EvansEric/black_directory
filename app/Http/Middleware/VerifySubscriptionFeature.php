@@ -18,6 +18,13 @@ class VerifySubscriptionFeature
      */
     public function handle(Request $request, Closure $next, string $feature = 'lead_forms'): Response
     {
+        $user = $request->user();
+
+        // Admins have full access to all features
+        if ($user instanceof User && $user->is_admin) {
+            return $next($request);
+        }
+
         $listingId = $request->route('business') ?? $request->route('listing') ?? $request->input('business_id') ?? $request->input('listing_id');
 
         $listing = null;
@@ -27,7 +34,6 @@ class VerifySubscriptionFeature
             $listing = Business::query()->find($listingId);
         }
 
-        $user = $request->user();
         if (! $listing && $user instanceof User) {
             $listing = $user->businesses()->first();
         }

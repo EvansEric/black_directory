@@ -449,10 +449,6 @@ new class extends Component
                             @endif
                         </button>
 
-                        @unless ($business->is_verified)
-                            <span class="absolute bottom-3 left-3 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-slate-950 shadow-md">Pending verification</span>
-                        @endunless
-
                         @auth
                             @if (auth()->id() === $business->user_id)
                                 <button
@@ -480,9 +476,14 @@ new class extends Component
                             @endif
                         @endauth
 
-                        <div class="absolute bottom-3 left-3 text-white text-xs font-medium flex items-center space-x-1">
-                            <i class="fa-solid fa-location-dot text-amber-400"></i>
-                            <span>{{ $business->location }}</span>
+                        <div class="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3">
+                            <div class="flex min-w-0 items-center space-x-2 text-xs font-medium text-white ml-1">
+                                <i class="fa-solid fa-location-dot shrink-0 text-amber-400"></i>
+                                <span class="truncate">{{ $business->location }}</span>
+                            </div>
+                            @unless ($business->is_verified)
+                                <span class="shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-slate-950 shadow-md">Pending verification</span>
+                            @endunless
                         </div>
                     </div>
 

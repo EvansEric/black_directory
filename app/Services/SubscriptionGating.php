@@ -198,8 +198,13 @@ class SubscriptionGating
     /**
      * Generic feature verification helper.
      */
-    public static function verifyFeature(?Business $listing, string $feature): bool
+    public static function verifyFeature(?Business $listing, string $feature, ?User $user = null): bool
     {
+        // Admins have full access to all features
+        if ($user instanceof User && $user->is_admin) {
+            return true;
+        }
+
         return match ($feature) {
             'logo', 'image' => self::canAccessLogo($listing),
             'custom_url', 'website', 'custom_link' => self::canAccessCustomUrl($listing),
@@ -277,6 +282,11 @@ class SubscriptionGating
      */
     public static function businessLimit(User $user): ?int
     {
+        // Admins have unlimited listings
+        if ($user->is_admin) {
+            return null;
+        }
+
         return self::BUSINESS_LIMITS[self::getOwnerTier($user)] ?? 1;
     }
 

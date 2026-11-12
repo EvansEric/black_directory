@@ -31,11 +31,11 @@ it('denies the admin page and verification updates to guests and non-admins', fu
 });
 
 it('shows the admin navigation link only to admins', function () {
-    $this->get(route('home'))->assertDontSee('Admin panel');
-    $this->actingAs(User::factory()->create())->get(route('home'))->assertDontSee('Admin panel');
+    $this->get(route('home'))->assertDontSee('Admin Dashboard');
+    $this->actingAs(User::factory()->create())->get(route('home'))->assertDontSee('Admin Dashboard');
     $this->actingAs(User::factory()->create(['is_admin' => true]))->get(route('home'))
-        ->assertSee('Admin panel')
-        ->assertSee(route('admin.businesses.index'), false);
+        ->assertSee('Admin Dashboard')
+        ->assertSee(route('admin.dashboard'), false);
 });
 
 it('lists pending businesses by default and supports status and owner search', function () {

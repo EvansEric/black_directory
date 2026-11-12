@@ -15,6 +15,7 @@ Route::livewire('/mission', 'pages::mission')->name('mission');
 Route::get('/b/{slug}', BusinessLinkController::class)->where('slug', '[a-z0-9-]+')->name('business.link');
 
 Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::livewire('/dashboard', 'pages::admin-dashboard')->name('dashboard');
     Route::get('/businesses', [BusinessVerificationController::class, 'index'])->name('businesses.index');
     Route::patch('/businesses/{business}/verification', [BusinessVerificationController::class, 'update'])->name('businesses.verification');
 });

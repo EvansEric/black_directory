@@ -152,8 +152,8 @@ new class extends Component
                                 </a>
                             @endif
                             @if (auth()->user()->is_admin)
-                                <a href="{{ route('admin.businesses.index') }}" class="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition">
-                                    <i class="fa-solid fa-shield-halved mr-2"></i> Admin panel
+                                <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fa-solid fa-shield-halved mr-2"></i> Admin Dashboard
                                 </a>
                             @endif
                             <button

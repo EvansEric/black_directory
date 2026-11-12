@@ -82,6 +82,12 @@ new class extends Component
         return Auth::check() ? SubscriptionGating::getOwnerTier(Auth::user()) : null;
     }
 
+    /** Whether to display the current plan badge (hidden for admins). */
+    public function shouldShowCurrentPlanBadge(): bool
+    {
+        return ! (Auth::check() && Auth::user()->is_admin);
+    }
+
     /** Time left on the paid plan that stays active after choosing Free. */
     public function downgradeNotice(): ?string
     {
@@ -300,7 +306,7 @@ new class extends Component
                 wire:click="selectTier('free')"
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'free' ? 'border-amber-500 bg-amber-50/30 shadow-lg' : 'border-slate-200 hover:border-slate-300' }}"
             >
-                @if ($this->currentTier() === 'free')
+                @if ($this->shouldShowCurrentPlanBadge() && $this->currentTier() === 'free')
                     <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
                 @endif
                 <div>
@@ -322,7 +328,7 @@ new class extends Component
                 wire:click="selectTier('standard')"
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'standard' ? 'border-amber-500 bg-amber-50/30 shadow-lg' : 'border-slate-200 hover:border-slate-300' }}"
             >
-                @if ($this->currentTier() === 'standard')
+                @if ($this->shouldShowCurrentPlanBadge() && $this->currentTier() === 'standard')
                     <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
                 @endif
                 <div>
@@ -360,7 +366,7 @@ new class extends Component
                 wire:click="selectTier('pro')"
                 class="rounded-2xl p-6 border-2 transition cursor-pointer flex flex-col justify-between relative {{ $selectedTier === 'pro' ? 'border-amber-500 bg-amber-50/40 shadow-xl ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300' }}"
             >
-                @if ($this->currentTier() === 'pro')
+                @if ($this->shouldShowCurrentPlanBadge() && $this->currentTier() === 'pro')
                     <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</span>
                 @endif
                 <div class="most-popular-badge absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-md">

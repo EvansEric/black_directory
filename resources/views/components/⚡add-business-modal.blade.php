@@ -256,14 +256,20 @@ new class extends Component
 
     public function canEditWebsite(): bool
     {
+        $user = Auth::user();
+        
+        if ($user?->is_admin) {
+            return true;
+        }
+
         $business = $this->currentBusiness();
 
-        if ($business || ! Auth::check()) {
+        if ($business || ! $user) {
             return SubscriptionGating::canAccessCustomUrl($business);
         }
 
         // A new listing inherits the plan the owner already pays for.
-        return SubscriptionGating::getOwnerTier(Auth::user()) !== SubscriptionGating::TIER_FREE;
+        return SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
     }
 
     public function limitMessage(): string
@@ -284,27 +290,46 @@ new class extends Component
 
     public function atBusinessLimit(): bool
     {
+        $user = Auth::user();
+        
+        // Admins have no limit
+        if ($user?->is_admin) {
+            return false;
+        }
+
         return ! $this->editingBusinessId
-            && Auth::check()
-            && ! SubscriptionGating::canAddBusiness(Auth::user());
+            && $user
+            && ! SubscriptionGating::canAddBusiness($user);
     }
 
     public function canEditLogo(): bool
     {
+        $user = Auth::user();
+        
+        if ($user?->is_admin) {
+            return true;
+        }
+
         $business = $this->currentBusiness();
 
         return $business
             ? SubscriptionGating::canAccessLogo($business)
-            : Auth::check() && SubscriptionGating::getOwnerTier(Auth::user()) !== SubscriptionGating::TIER_FREE;
+            : $user && SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
     }
 
     public function canEditRichDescription(): bool
     {
+        $user = Auth::user();
+        
+        if ($user?->is_admin) {
+            return true;
+        }
+
         $business = $this->currentBusiness();
 
         return $business
             ? SubscriptionGating::canAccessDescription($business)
-            : Auth::check() && SubscriptionGating::getOwnerTier(Auth::user()) !== SubscriptionGating::TIER_FREE;
+            : $user && SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
     }
 
     private function currentBusiness(): ?Business

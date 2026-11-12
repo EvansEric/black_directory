@@ -44,6 +44,11 @@ class extends Component
 
     public function mount(PendingPlanSelection $selection): void
     {
+        // Admins are redirected away from the pricing page
+        if (Auth::check() && Auth::user()->is_admin) {
+            $this->redirect('/');
+        }
+
         if (Auth::check()) {
             $this->resumePlan = $selection->pull();
         }
@@ -52,6 +57,11 @@ class extends Component
     public function currentTier(): ?string
     {
         return Auth::check() ? SubscriptionGating::getOwnerTier(Auth::user()) : null;
+    }
+
+    public function shouldShowCurrentPlanBadge(): bool
+    {
+        return ! (Auth::check() && Auth::user()->is_admin);
     }
 }; ?>
 
@@ -79,7 +89,7 @@ class extends Component
             <div class="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-3">
                 @foreach ($plans as $plan)
                     <article class="relative flex flex-col justify-between rounded-2xl border-2 p-6 transition {{ ($plan['popular'] ?? false) ? 'border-amber-500 bg-amber-50/40 shadow-xl ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-amber-300' }}">
-                        @if ($this->currentTier() === $plan['key'])
+                        @if ($this->shouldShowCurrentPlanBadge() && $this->currentTier() === $plan['key'])
                             <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow" data-current-plan-badge>Current plan</div>
                         @endif
 

@@ -73,7 +73,9 @@ new class extends Component
             {{-- Mobile/Nav actions --}}
             <div class="flex items-center gap-2 sm:gap-3" x-data="{ userMenuOpen: false }">
                 <nav class="hidden md:flex items-center gap-6 text-sm font-medium" x-data>
-                    <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
+                    @if (! auth()->check() || ! auth()->user()->is_admin)
+                        <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
+                    @endif
                     <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
                     @auth
                         <button
@@ -128,25 +130,27 @@ new class extends Component
                                 $planEnds = $planBusiness ? $planBusiness->subscription_ends_at : auth()->user()->pending_plan_ends_at;
                                 $planEnding = $planBusiness ? \App\Services\SubscriptionGating::isEnding($planBusiness) : $planEnds !== null;
                             @endphp
-                            <a href="{{ route('pricing') }}" class="flex items-center justify-between px-4 py-2 border-b border-slate-100 hover:bg-slate-50 transition" data-current-plan>
-                                <span>
-                                    <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Current plan</span>
-                                    <span class="block text-xs font-bold text-amber-700">{{ $currentPlan['name'] }}</span>
-                                    @if (! $planBusiness && $currentPlan['key'] !== 'free')
-                                        <span class="block text-[11px] text-slate-500" data-plan-pending>Paid &middot; create a listing to apply it</span>
-                                    @endif
-                                    @if ($planEnds && $planEnds->isFuture())
-                                        <span class="block text-[11px] {{ $planEnding ? 'text-red-600' : 'text-slate-500' }}" data-plan-time-left>
-                                            @if ($planEnding)
-                                                Ends {{ $planEnds->diffForHumans() }} &middot; then Free
-                                            @else
-                                                Renews {{ $planEnds->diffForHumans() }} ({{ $planEnds->diffInDays(now(), true) < 1 ? 'less than a day' : (int) ceil($planEnds->diffInDays(now(), true)).' days left' }})
-                                            @endif
-                                        </span>
-                                    @endif
-                                </span>
-                                <span class="text-[11px] font-semibold text-slate-500">{{ $currentPlan['key'] === 'free' ? 'Upgrade' : 'Manage' }} <i class="fa-solid fa-arrow-right text-[9px]"></i></span>
-                            </a>
+                            @if (! auth()->user()->is_admin)
+                                <a href="{{ route('pricing') }}" class="flex items-center justify-between px-4 py-2 border-b border-slate-100 hover:bg-slate-50 transition" data-current-plan>
+                                    <span>
+                                        <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Current plan</span>
+                                        <span class="block text-xs font-bold text-amber-700">{{ $currentPlan['name'] }}</span>
+                                        @if (! $planBusiness && $currentPlan['key'] !== 'free')
+                                            <span class="block text-[11px] text-slate-500" data-plan-pending>Paid &middot; create a listing to apply it</span>
+                                        @endif
+                                        @if ($planEnds && $planEnds->isFuture())
+                                            <span class="block text-[11px] {{ $planEnding ? 'text-red-600' : 'text-slate-500' }}" data-plan-time-left>
+                                                @if ($planEnding)
+                                                    Ends {{ $planEnds->diffForHumans() }} &middot; then Free
+                                                @else
+                                                    Renews {{ $planEnds->diffForHumans() }} ({{ $planEnds->diffInDays(now(), true) < 1 ? 'less than a day' : (int) ceil($planEnds->diffInDays(now(), true)).' days left' }})
+                                                @endif
+                                            </span>
+                                        @endif
+                                    </span>
+                                    <span class="text-[11px] font-semibold text-slate-500">{{ $currentPlan['key'] === 'free' ? 'Upgrade' : 'Manage' }} <i class="fa-solid fa-arrow-right text-[9px]"></i></span>
+                                </a>
+                            @endif
                             @if (auth()->user()->is_admin)
                                 <a href="{{ route('admin.businesses.index') }}" class="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition">
                                     <i class="fa-solid fa-shield-halved mr-2"></i> Admin panel
@@ -180,7 +184,9 @@ new class extends Component
         </div>
 
         <nav class="flex flex-wrap items-center justify-center gap-3 pb-3 text-xs font-medium md:hidden" x-data>
-            <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
+            @if (! auth()->check() || ! auth()->user()->is_admin)
+                <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
+            @endif
             <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
             @auth
                 <button

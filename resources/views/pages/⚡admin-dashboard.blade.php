@@ -7,13 +7,17 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new
 #[Layout('layouts.app')]
 #[Title('Admin Dashboard | Noir Directory')]
 class extends Component
 {
+    use WithPagination;
+
     public string $section = 'analytics';
     public string $timeFilter = 'day';
     public string $businessStatus = 'pending';
@@ -27,11 +31,19 @@ class extends Component
     public function setSection(string $section): void
     {
         $this->section = $section;
+        $this->resetPage();
     }
 
     public function setTimeFilter(string $filter): void
     {
         $this->timeFilter = $filter;
+    }
+
+    public function updated($name)
+    {
+        if (in_array($name, ['businessStatus', 'businessSearch'])) {
+            $this->resetPage();
+        }
     }
 
     public function getTotalUsers(): int
@@ -127,7 +139,8 @@ class extends Component
         return $data;
     }
 
-    public function getBusinesses()
+    #[Computed]
+    public function businesses()
     {
         $query = Business::query();
 
@@ -149,6 +162,12 @@ class extends Component
         return $query->latest()->paginate(10);
     }
 
+    public function filterBusinesses(): void
+    {
+        // This method is called by wire:submit on the form
+        // Livewire will automatically re-compute businesses() after property updates
+    }
+
     public function verifyBusiness(int $businessId): void
     {
         $business = Business::findOrFail($businessId);
@@ -161,11 +180,6 @@ class extends Component
         $business = Business::findOrFail($businessId);
         $business->update(['is_verified' => false]);
         session()->flash('status', 'Business verification removed.');
-    }
-
-    public function filterBusinesses(): void
-    {
-        // Livewire will re-render with new filter values
     }
 }; ?>
 
@@ -363,7 +377,7 @@ class extends Component
                     </div>
 
                     <div class="space-y-4">
-                        @forelse ($this->getBusinesses() as $business)
+                        @forelse ($this->businesses as $business)
                             <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <div class="flex flex-wrap items-start justify-between gap-4">
                                     <div>
@@ -418,9 +432,11 @@ class extends Component
                         @endforelse
                     </div>
 
-                    {{ $this->getBusinesses()->links() }}
+                    {{ $this->businesses->links() }}
                 @endif
             </div>
         </main>
+
+        <livewire:add-business-modal />
     </div>
 </div>

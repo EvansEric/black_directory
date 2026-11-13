@@ -48,26 +48,26 @@ class extends Component
 
     public function getTotalUsers(): int
     {
-        return User::count();
+        return User::where('is_admin', false)->count();
     }
 
     public function getUsersByPlan(): array
     {
         return [
-            'free' => User::whereDoesntHave('businesses', function ($query) {
+            'free' => User::where('is_admin', false)->whereDoesntHave('businesses', function ($query) {
                 $query->whereIn('subscription_tier', [SubscriptionGating::TIER_STANDARD, SubscriptionGating::TIER_PRO, SubscriptionGating::TIER_SPOTLIGHT]);
             })->count(),
-            'standard' => User::whereHas('businesses', function ($query) {
+            'standard' => User::where('is_admin', false)->whereHas('businesses', function ($query) {
                 $query->where('subscription_tier', SubscriptionGating::TIER_STANDARD)->where(function ($q) {
                     $q->where('subscription_status', 'active')->orWhere('subscription_status', 'trialing');
                 });
             })->distinct()->count(),
-            'pro' => User::whereHas('businesses', function ($query) {
+            'pro' => User::where('is_admin', false)->whereHas('businesses', function ($query) {
                 $query->where('subscription_tier', SubscriptionGating::TIER_PRO)->where(function ($q) {
                     $q->where('subscription_status', 'active')->orWhere('subscription_status', 'trialing');
                 });
             })->distinct()->count(),
-            'spotlight' => User::whereHas('businesses', function ($query) {
+            'spotlight' => User::where('is_admin', false)->whereHas('businesses', function ($query) {
                 $query->where('subscription_tier', SubscriptionGating::TIER_SPOTLIGHT)->where(function ($q) {
                     $q->where('subscription_status', 'active')->orWhere('subscription_status', 'trialing');
                 });

@@ -5,6 +5,7 @@ use App\Models\Business;
 use App\Services\SubscriptionGating;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Computed;
@@ -22,6 +23,11 @@ class extends Component
     public string $timeFilter = 'day';
     public string $businessStatus = 'pending';
     public string $businessSearch = '';
+    public ?int $editingUserId = null;
+    public string $editingUserName = '';
+    public string $editingUserEmail = '';
+    public string $editingUserPassword = '';
+    public string $editingUserPasswordConfirm = '';
 
     public function mount(): void
     {
@@ -162,10 +168,119 @@ class extends Component
         return $query->latest()->paginate(10);
     }
 
+    #[Computed]
+    public function users()
+    {
+        return User::where('is_admin', false)->latest()->paginate(10);
+    }
+
     public function filterBusinesses(): void
     {
         // This method is called by wire:submit on the form
         // Livewire will automatically re-compute businesses() after property updates
+    }
+
+    public function openAddUserModal(): void
+    {
+        $this->dispatch('openAddUserModal');
+    }
+
+    public function openEditUserModal(int $userId): void
+    {
+        $user = User::findOrFail($userId);
+        $this->editingUserId = $userId;
+        $this->editingUserName = $user->name;
+        $this->editingUserEmail = $user->email;
+    }
+
+    public function saveEditUser(): void
+    {
+        if (!$this->editingUserId) {
+            return;
+        }
+
+        $rules = [
+            'editingUserName' => 'required|string|max:255',
+            'editingUserEmail' => 'required|email|max:255|unique:users,email,' . $this->editingUserId,
+        ];
+
+        if (filled($this->editingUserPassword)) {
+            $rules['editingUserPassword'] = 'required|string|min:8';
+            $rules['editingUserPasswordConfirm'] = 'required|same:editingUserPassword';
+        }
+
+        $this->validate($rules);
+
+        $user = User::findOrFail($this->editingUserId);
+        $updateData = [
+            'name' => $this->editingUserName,
+            'email' => $this->editingUserEmail,
+        ];
+
+        if (filled($this->editingUserPassword)) {
+            $updateData['password'] = Hash::make($this->editingUserPassword);
+        }
+
+        $user->update($updateData);
+
+        $this->editingUserId = null;
+        $this->editingUserName = '';
+        $this->editingUserEmail = '';
+        $this->editingUserPassword = '';
+        $this->editingUserPasswordConfirm = '';
+        session()->flash('status', "{$user->name} has been updated successfully.");
+    }
+
+    public function cancelEditUser(): void
+    {
+        $this->editingUserId = null;
+        $this->editingUserName = '';
+        $this->editingUserEmail = '';
+        $this->editingUserPassword = '';
+        $this->editingUserPasswordConfirm = '';
+    }
+
+    public function makeAdmin(int $userId): void
+    {
+        $user = User::findOrFail($userId);
+        abort_unless(Auth::user()->is_admin, 403);
+        $user->update(['is_admin' => true]);
+        session()->flash('status', "{$user->name} is now an admin.");
+    }
+
+    public function toggleUserStatus(int $userId): void
+    {
+        $user = User::findOrFail($userId);
+        abort_unless(Auth::user()->is_admin, 403);
+        $user->update(['is_active' => !($user->is_active ?? true)]);
+        $status = ($user->is_active ?? true) ? 'activated' : 'deactivated';
+        session()->flash('status', "{$user->name} has been {$status}.");
+    }
+
+    public function deleteUser(int $userId): void
+    {
+        $user = User::findOrFail($userId);
+        abort_unless(Auth::user()->is_admin, 403);
+        abort_if($user->id === Auth::id(), 403);
+        $user->delete();
+        session()->flash('status', 'User deleted successfully.');
+    }
+
+    public function makeSuperAdmin(int $userId): void
+    {
+        abort_unless(Auth::user()->is_super_admin, 403);
+        $user = User::findOrFail($userId);
+        $user->update(['is_super_admin' => true]);
+        session()->flash('status', "{$user->name} is now a super admin.");
+    }
+
+    public function removeAdmin(int $userId): void
+    {
+        abort_unless(Auth::user()->is_admin, 403);
+        abort_if($userId === Auth::id(), 403);
+        $user = User::findOrFail($userId);
+        $user->update(['is_admin' => false, 'is_super_admin' => false]);
+        session()->flash('status', 'Admin status removed from ' . $user->name);
     }
 
     public function verifyBusiness(int $businessId): void
@@ -205,6 +320,13 @@ class extends Component
                 >
                     <i class="fa-solid fa-shield-halved mr-2"></i> Business Verification
                 </button>
+
+                <button
+                    wire:click="setSection('user-management')"
+                    class="w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium transition {{ $section === 'user-management' ? 'bg-amber-100 text-amber-900' : 'text-slate-700 hover:bg-slate-100' }}"
+                >
+                    <i class="fa-solid fa-users-gear mr-2"></i> User Management
+                </button>
             </nav>
         </aside>
 
@@ -214,9 +336,11 @@ class extends Component
                 {{-- Header --}}
                 <div class="mb-8">
                     <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Admin Panel</p>
-                    <h1 class="mt-2 font-serif text-3xl font-bold text-slate-900">
-                        @if ($section === 'analytics') Analytics Dashboard @else Business Verification @endif
-                    </h1>
+                    <div class="mt-2 flex items-center justify-between">
+                        <h1 class="font-serif text-3xl font-bold text-slate-900">
+                            @if ($section === 'analytics') Analytics Dashboard @elseif ($section === 'businesses') Business Verification @else User Management @endif
+                        </h1>
+                    </div>
                 </div>
 
                 {{-- Analytics Section --}}
@@ -360,6 +484,18 @@ class extends Component
                     @endif
 
                     <div class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="flex flex-wrap items-end justify-between gap-4 mb-4">
+                            <div class="flex-1">
+                                <p class="text-sm font-semibold text-slate-700 mb-2">Business Management</p>
+                                <p class="text-xs text-slate-500">Filter and manage business verification requests</p>
+                            </div>
+                            <button
+                                wire:click="setSection('user-management')"
+                                class="rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-600 transition whitespace-nowrap"
+                            >
+                                <i class="fa-solid fa-users-gear mr-2"></i> Manage Users
+                            </button>
+                        </div>
                         <form wire:submit="filterBusinesses" class="flex flex-wrap items-end gap-3">
                             <div>
                                 <label for="status" class="mb-1 block text-xs font-semibold text-slate-700">Status</label>
@@ -433,6 +569,304 @@ class extends Component
                     </div>
 
                     {{ $this->businesses->links() }}
+                @endif
+
+                {{-- User Management Section --}}
+                @if ($section === 'user-management')
+                    @if (session('status'))
+                        <div role="status" class="mb-6 rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                            {{ session('status') }}
+                        </div>
+                    @endif
+
+                    <div class="mb-6">
+                        <button
+                            wire:click="openAddUserModal"
+                            class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 transition"
+                        >
+                            <i class="fa-solid fa-plus mr-2"></i> Add New User
+                        </button>
+                    </div>
+
+                    {{-- Edit User Modal --}}
+                    @if ($editingUserId)
+                        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg max-h-[90vh] overflow-y-auto">
+                                <h2 class="text-xl font-bold text-slate-900 mb-4">Edit User</h2>
+                                
+                                <form wire:submit="saveEditUser" class="space-y-4">
+                                    <div>
+                                        <label for="edit-name" class="block text-sm font-semibold text-slate-700 mb-1">Name</label>
+                                        <input 
+                                            id="edit-name"
+                                            type="text" 
+                                            wire:model="editingUserName"
+                                            class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                            required
+                                        >
+                                        @error('editingUserName')
+                                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div>
+                                        <label for="edit-email" class="block text-sm font-semibold text-slate-700 mb-1">Email</label>
+                                        <input 
+                                            id="edit-email"
+                                            type="email" 
+                                            wire:model="editingUserEmail"
+                                            class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                            required
+                                        >
+                                        @error('editingUserEmail')
+                                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div class="border-t border-slate-200 pt-4">
+                                        <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Change Password (Optional)</p>
+                                        
+                                        <div>
+                                            <label for="edit-password" class="block text-sm font-semibold text-slate-700 mb-1">New Password</label>
+                                            <input 
+                                                id="edit-password"
+                                                type="password" 
+                                                wire:model="editingUserPassword"
+                                                placeholder="Leave blank to keep current password"
+                                                class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                            >
+                                            @error('editingUserPassword')
+                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        <div>
+                                            <label for="edit-password-confirm" class="block text-sm font-semibold text-slate-700 mb-1 mt-3">Confirm Password</label>
+                                            <input 
+                                                id="edit-password-confirm"
+                                                type="password" 
+                                                wire:model="editingUserPasswordConfirm"
+                                                placeholder="Confirm new password"
+                                                class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                            >
+                                            @error('editingUserPasswordConfirm')
+                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                    </div>
+
+                                    <div class="flex gap-2 pt-4">
+                                        <button
+                                            type="button"
+                                            wire:click="cancelEditUser"
+                                            class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            class="flex-1 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-500 transition"
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-slate-200 bg-slate-50">
+                                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Name</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Email</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Status</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Joined</th>
+                                        <th class="px-6 py-4 text-right text-xs font-semibold uppercase text-slate-700">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    @forelse ($this->users as $user)
+                                        <tr class="hover:bg-slate-50 transition">
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
+                                                        <i class="fa-solid fa-user text-slate-400"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="font-semibold text-slate-900">{{ $user->name }}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-slate-600">{{ $user->email }}</td>
+                                            <td class="px-6 py-4 text-sm">
+                                                @if ($user->is_admin)
+                                                    <span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
+                                                        <i class="fa-solid fa-crown mr-1"></i> Admin
+                                                    </span>
+                                                @elseif (!($user->is_active ?? true))
+                                                    <span class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">
+                                                        <i class="fa-solid fa-circle-xmark mr-1"></i> Inactive
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">
+                                                        <i class="fa-solid fa-circle-check mr-1"></i> Active
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-slate-600">{{ $user->created_at->format('M j, Y') }}</td>
+                                            <td class="px-6 py-4 text-right">
+                                                <div class="flex gap-2 justify-end flex-wrap">
+                                                    <button
+                                                        type="button"
+                                                        wire:click="openEditUserModal({{ $user->id }})"
+                                                        title="Edit User"
+                                                        class="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-purple-500 transition"
+                                                    >
+                                                        <i class="fa-solid fa-pen"></i>
+                                                    </button>
+                                                    @if (!$user->is_admin)
+                                                        <button
+                                                            type="button"
+                                                            wire:click="makeAdmin({{ $user->id }})"
+                                                            wire:confirm="Make {{ $user->name }} an admin?"
+                                                            title="Make Admin"
+                                                            class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500 transition"
+                                                        >
+                                                            <i class="fa-solid fa-shield"></i>
+                                                        </button>
+                                                    @endif
+                                                    @if ($user->is_active ?? true)
+                                                        <button
+                                                            type="button"
+                                                            wire:click="toggleUserStatus({{ $user->id }})"
+                                                            wire:confirm="Deactivate {{ $user->name }}?"
+                                                            title="Deactivate"
+                                                            class="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-500 transition"
+                                                        >
+                                                            <i class="fa-solid fa-ban"></i>
+                                                        </button>
+                                                    @else
+                                                        <button
+                                                            type="button"
+                                                            wire:click="toggleUserStatus({{ $user->id }})"
+                                                            wire:confirm="Activate {{ $user->name }}?"
+                                                            title="Activate"
+                                                            class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-500 transition"
+                                                        >
+                                                            <i class="fa-solid fa-check"></i>
+                                                        </button>
+                                                    @endif
+                                                    <button
+                                                        type="button"
+                                                        wire:click="deleteUser({{ $user->id }})"
+                                                        wire:confirm="Delete {{ $user->name }}? This cannot be undone."
+                                                        title="Delete"
+                                                        class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-500 transition"
+                                                    >
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="px-6 py-12 text-center">
+                                                <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-4 block"></i>
+                                                <p class="text-slate-500">No non-admin users found.</p>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{ $this->users->links() }}
+
+                    {{-- Admin Users Section --}}
+                    <div class="mt-12">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-6">Current Admins</h2>
+                        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 bg-slate-50">
+                                            <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Name</th>
+                                            <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Email</th>
+                                            <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Level</th>
+                                            <th class="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-700">Joined</th>
+                                            <th class="px-6 py-4 text-right text-xs font-semibold uppercase text-slate-700">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200">
+                                        @forelse (User::where('is_admin', true)->latest()->get() as $admin)
+                                            <tr class="hover:bg-slate-50 transition">
+                                                <td class="px-6 py-4">
+                                                    <div class="flex items-center gap-3">
+                                                        <div class="h-10 w-10 rounded-full {{ $admin->is_super_admin ? 'bg-purple-200' : 'bg-amber-200' }} flex items-center justify-center">
+                                                            <i class="fa-solid {{ $admin->is_super_admin ? 'fa-crown' : 'fa-star' }} {{ $admin->is_super_admin ? 'text-purple-600' : 'text-amber-600' }}"></i>
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-semibold text-slate-900">{{ $admin->name }}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 text-sm text-slate-600">{{ $admin->email }}</td>
+                                                <td class="px-6 py-4 text-sm">
+                                                    @if ($admin->is_super_admin)
+                                                        <span class="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">
+                                                            <i class="fa-solid fa-crown mr-1"></i> Super Admin
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                                                            <i class="fa-solid fa-star mr-1"></i> Admin
+                                                        </span>
+                                                    @endif
+                                                </td>
+                                                <td class="px-6 py-4 text-sm text-slate-600">{{ $admin->created_at->format('M j, Y') }}</td>
+                                                <td class="px-6 py-4 text-right">
+                                                    @if ($admin->id !== Auth::user()->id)
+                                                        <div class="flex gap-2 justify-end">
+                                                            @if (!$admin->is_super_admin && Auth::user()->is_super_admin)
+                                                                <button
+                                                                    wire:click="makeSuperAdmin({{ $admin->id }})"
+                                                                    wire:confirm="Promote {{ $admin->name }} to Super Admin?"
+                                                                    class="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-purple-500 transition"
+                                                                    title="Make Super Admin"
+                                                                >
+                                                                    <i class="fa-solid fa-crown"></i>
+                                                                </button>
+                                                            @endif
+                                                            <button
+                                                                wire:click="removeAdmin({{ $admin->id }})"
+                                                                wire:confirm="Remove admin from {{ $admin->name }}?"
+                                                                class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-500 transition"
+                                                                title="Remove Admin"
+                                                            >
+                                                                <i class="fa-solid fa-times mr-1"></i> Remove
+                                                            </button>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-xs text-slate-500 font-semibold">You</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="5" class="px-6 py-12 text-center">
+                                                    <p class="text-slate-500">No admins found.</p>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 @endif
             </div>
         </main>

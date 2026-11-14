@@ -20,3 +20,17 @@ it('hides the advertisement and sidebar layout when advertisements are disabled'
         ->assertDontSee('Your ad could be here')
         ->assertDontSee('xl:grid-cols-[minmax(0,1fr)_18rem]', false);
 });
+
+it('shows the promote listing button to guests', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('Promote Your Listing');
+});
+
+it('hides the promote listing button from super admins', function () {
+    $superAdmin = \App\Models\User::factory()->create(['is_super_admin' => true]);
+
+    $this->actingAs($superAdmin)->get(route('home'))
+        ->assertOk()
+        ->assertDontSee('Promote Your Listing');
+});

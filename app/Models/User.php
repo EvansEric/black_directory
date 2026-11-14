@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
  * @property string $email
  * @property string|null $google_id
  * @property bool $is_admin
+ * @property bool $is_super_admin
+ * @property bool $is_active
  * @property string|null $pending_stripe_session_id
  * @property string|null $pending_plan_tier
  * @property string|null $pending_billing_cycle
@@ -29,7 +31,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'google_id'])]
+#[Fillable(['name', 'email', 'password', 'google_id', 'is_admin', 'is_active', 'is_super_admin'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -46,6 +48,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'is_admin' => 'boolean',
+            'is_active' => 'boolean',
+            'is_super_admin' => 'boolean',
             'pending_plan_ends_at' => 'datetime',
             'password' => 'hashed',
         ];

@@ -28,6 +28,13 @@ class extends Component
     public string $editingUserEmail = '';
     public string $editingUserPassword = '';
     public string $editingUserPasswordConfirm = '';
+    public bool $editingUserIsAdmin = false;
+    public bool $showAddUserModal = false;
+    public string $newUserName = '';
+    public string $newUserEmail = '';
+    public string $newUserPassword = '';
+    public string $newUserPasswordConfirm = '';
+    public bool $newUserIsAdmin = false;
 
     public function mount(): void
     {
@@ -182,7 +189,38 @@ class extends Component
 
     public function openAddUserModal(): void
     {
-        $this->dispatch('openAddUserModal');
+        $this->showAddUserModal = true;
+    }
+
+    public function closeAddUserModal(): void
+    {
+        $this->showAddUserModal = false;
+        $this->newUserName = '';
+        $this->newUserEmail = '';
+        $this->newUserPassword = '';
+        $this->newUserPasswordConfirm = '';
+        $this->newUserIsAdmin = false;
+    }
+
+    public function saveAddUser(): void
+    {
+        $this->validate([
+            'newUserName' => 'required|string|max:255',
+            'newUserEmail' => 'required|email|max:255|unique:users,email',
+            'newUserPassword' => 'required|string|min:8',
+            'newUserPasswordConfirm' => 'required|same:newUserPassword',
+        ]);
+
+        User::create([
+            'name' => $this->newUserName,
+            'email' => $this->newUserEmail,
+            'password' => Hash::make($this->newUserPassword),
+            'is_admin' => $this->newUserIsAdmin,
+            'is_active' => true,
+        ]);
+
+        session()->flash('status', 'User created successfully.');
+        $this->closeAddUserModal();
     }
 
     public function openEditUserModal(int $userId): void
@@ -191,6 +229,7 @@ class extends Component
         $this->editingUserId = $userId;
         $this->editingUserName = $user->name;
         $this->editingUserEmail = $user->email;
+        $this->editingUserIsAdmin = $user->is_admin;
     }
 
     public function saveEditUser(): void
@@ -199,35 +238,32 @@ class extends Component
             return;
         }
 
-        $rules = [
-            'editingUserName' => 'required|string|max:255',
-            'editingUserEmail' => 'required|email|max:255|unique:users,email,' . $this->editingUserId,
-        ];
+        $rules = [];
 
         if (filled($this->editingUserPassword)) {
             $rules['editingUserPassword'] = 'required|string|min:8';
             $rules['editingUserPasswordConfirm'] = 'required|same:editingUserPassword';
         }
 
-        $this->validate($rules);
+        if (!empty($rules)) {
+            $this->validate($rules);
+        }
 
         $user = User::findOrFail($this->editingUserId);
-        $updateData = [
-            'name' => $this->editingUserName,
-            'email' => $this->editingUserEmail,
-        ];
+        $updateData = [];
 
         if (filled($this->editingUserPassword)) {
             $updateData['password'] = Hash::make($this->editingUserPassword);
         }
 
+        $updateData['is_admin'] = $this->editingUserIsAdmin;
+
         $user->update($updateData);
 
         $this->editingUserId = null;
-        $this->editingUserName = '';
-        $this->editingUserEmail = '';
         $this->editingUserPassword = '';
         $this->editingUserPasswordConfirm = '';
+        $this->editingUserIsAdmin = false;
         session()->flash('status', "{$user->name} has been updated successfully.");
     }
 
@@ -238,6 +274,7 @@ class extends Component
         $this->editingUserEmail = '';
         $this->editingUserPassword = '';
         $this->editingUserPasswordConfirm = '';
+        $this->editingUserIsAdmin = false;
     }
 
     public function makeAdmin(int $userId): void
@@ -407,7 +444,7 @@ class extends Component
                                     <span class="text-sm text-slate-600">Free</span>
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 w-32 rounded-full bg-slate-200">
-                                            <div class="h-full w-full rounded-full bg-slate-400" style="width: {{ min(100, ($usersByPlan['free'] / $this->getTotalUsers()) * 100) }}%"></div>
+                                            <div class="h-full w-full rounded-full bg-slate-400" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['free'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['free'] }}</span>
                                     </div>
@@ -416,7 +453,7 @@ class extends Component
                                     <span class="text-sm text-slate-600">Standard</span>
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 w-32 rounded-full bg-blue-200">
-                                            <div class="h-full rounded-full bg-blue-500" style="width: {{ min(100, ($usersByPlan['standard'] / $this->getTotalUsers()) * 100) }}%"></div>
+                                            <div class="h-full rounded-full bg-blue-500" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['standard'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['standard'] }}</span>
                                     </div>
@@ -425,7 +462,7 @@ class extends Component
                                     <span class="text-sm text-slate-600">Pro</span>
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 w-32 rounded-full bg-amber-200">
-                                            <div class="h-full rounded-full bg-amber-500" style="width: {{ min(100, ($usersByPlan['pro'] / $this->getTotalUsers()) * 100) }}%"></div>
+                                            <div class="h-full rounded-full bg-amber-500" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['pro'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['pro'] }}</span>
                                     </div>
@@ -434,7 +471,7 @@ class extends Component
                                     <span class="text-sm text-slate-600">Spotlight</span>
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 w-32 rounded-full bg-purple-200">
-                                            <div class="h-full rounded-full bg-purple-500" style="width: {{ min(100, ($usersByPlan['spotlight'] / $this->getTotalUsers()) * 100) }}%"></div>
+                                            <div class="h-full rounded-full bg-purple-500" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['spotlight'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['spotlight'] }}</span>
                                     </div>
@@ -588,42 +625,139 @@ class extends Component
                         </button>
                     </div>
 
+                    {{-- Add User Modal --}}
+                    @if ($showAddUserModal)
+                        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg overflow-y-auto max-h-[90vh]">
+                                <h2 class="text-xl font-bold text-slate-900 mb-4">Add New User</h2>
+                                
+                                <form wire:submit="saveAddUser" class="space-y-4">
+                                    <div>
+                                        <label for="add-name" class="block text-sm font-semibold text-slate-700 mb-1">Name</label>
+                                        <input 
+                                            id="add-name"
+                                            type="text" 
+                                            wire:model="newUserName"
+                                            class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                            required
+                                        >
+                                        @error('newUserName')
+                                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div>
+                                        <label for="add-email" class="block text-sm font-semibold text-slate-700 mb-1">Email</label>
+                                        <input 
+                                            id="add-email"
+                                            type="email" 
+                                            wire:model="newUserEmail"
+                                            class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                            required
+                                        >
+                                        @error('newUserEmail')
+                                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div class="border-b border-slate-200 pb-4">
+                                        <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Password</p>
+                                        
+                                        <div>
+                                            <label for="add-password" class="block text-sm font-semibold text-slate-700 mb-1">Password</label>
+                                            <input 
+                                                id="add-password"
+                                                type="password" 
+                                                wire:model="newUserPassword"
+                                                placeholder="Minimum 8 characters"
+                                                class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                                required
+                                            >
+                                            @error('newUserPassword')
+                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        <div>
+                                            <label for="add-password-confirm" class="block text-sm font-semibold text-slate-700 mb-1 mt-3">Confirm Password</label>
+                                            <input 
+                                                id="add-password-confirm"
+                                                type="password" 
+                                                wire:model="newUserPasswordConfirm"
+                                                placeholder="Confirm password"
+                                                class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                                required
+                                            >
+                                            @error('newUserPasswordConfirm')
+                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+                                        <input 
+                                            id="add-admin"
+                                            type="checkbox" 
+                                            wire:model="newUserIsAdmin"
+                                            class="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                                        >
+                                        <label for="add-admin" class="text-sm font-semibold text-slate-700">Admin User</label>
+                                    </div>
+
+                                    <div class="flex gap-2 pt-4">
+                                        <button
+                                            type="button"
+                                            wire:click="closeAddUserModal"
+                                            class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            class="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 transition"
+                                        >
+                                            Create User
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Edit User Modal --}}
                     @if ($editingUserId)
                         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg max-h-[90vh] overflow-y-auto">
+                            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
                                 <h2 class="text-xl font-bold text-slate-900 mb-4">Edit User</h2>
                                 
                                 <form wire:submit="saveEditUser" class="space-y-4">
-                                    <div>
-                                        <label for="edit-name" class="block text-sm font-semibold text-slate-700 mb-1">Name</label>
-                                        <input 
-                                            id="edit-name"
-                                            type="text" 
-                                            wire:model="editingUserName"
-                                            class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                                            required
-                                        >
-                                        @error('editingUserName')
-                                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                                        @enderror
+                                    <div class="border-b border-slate-200 pb-4">
+                                        <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">User Information</p>
+                                        
+                                        <div>
+                                            <label for="edit-name" class="block text-sm font-semibold text-slate-700 mb-1">Name</label>
+                                            <input 
+                                                id="edit-name"
+                                                type="text" 
+                                                value="{{ $editingUserName }}"
+                                                disabled
+                                                class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm bg-slate-50 text-slate-700 cursor-not-allowed"
+                                            >
+                                        </div>
+
+                                        <div class="mt-3">
+                                            <label for="edit-email" class="block text-sm font-semibold text-slate-700 mb-1">Email</label>
+                                            <input 
+                                                id="edit-email"
+                                                type="email" 
+                                                value="{{ $editingUserEmail }}"
+                                                disabled
+                                                class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm bg-slate-50 text-slate-700 cursor-not-allowed"
+                                            >
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <label for="edit-email" class="block text-sm font-semibold text-slate-700 mb-1">Email</label>
-                                        <input 
-                                            id="edit-email"
-                                            type="email" 
-                                            wire:model="editingUserEmail"
-                                            class="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                                            required
-                                        >
-                                        @error('editingUserEmail')
-                                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                                        @enderror
-                                    </div>
-
-                                    <div class="border-t border-slate-200 pt-4">
+                                    <div class="border-b border-slate-200 pb-4">
                                         <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Change Password (Optional)</p>
                                         
                                         <div>
@@ -654,6 +788,15 @@ class extends Component
                                             @enderror
                                         </div>
                                     </div>
+
+                                    <div class="flex items-center gap-3">
+                                        <input 
+                                            id="edit-admin"
+                                            type="checkbox" 
+                                            wire:model="editingUserIsAdmin"
+                                            class="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                                        >
+                                        <label for="edit-admin" class="text-sm font-semibold text-slate-700">Admin User</label>
                                     </div>
 
                                     <div class="flex gap-2 pt-4">
@@ -728,17 +871,6 @@ class extends Component
                                                     >
                                                         <i class="fa-solid fa-pen"></i>
                                                     </button>
-                                                    @if (!$user->is_admin)
-                                                        <button
-                                                            type="button"
-                                                            wire:click="makeAdmin({{ $user->id }})"
-                                                            wire:confirm="Make {{ $user->name }} an admin?"
-                                                            title="Make Admin"
-                                                            class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500 transition"
-                                                        >
-                                                            <i class="fa-solid fa-shield"></i>
-                                                        </button>
-                                                    @endif
                                                     @if ($user->is_active ?? true)
                                                         <button
                                                             type="button"

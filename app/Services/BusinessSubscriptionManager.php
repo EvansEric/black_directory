@@ -61,34 +61,13 @@ class BusinessSubscriptionManager
     }
 
     /**
-     * Checkout for a user who has no listing yet; the paid plan is attached to
-     * their first listing once the session is confirmed.
+     * Account-level checkout cannot identify a verified listing to charge for.
      *
      * @return array{url: string, id: string}
      */
     public function createAccountCheckout(User $user, string $tier, string $cycle): array
     {
-        $priceId = $this->checkoutPriceId($tier, $cycle);
-        $metadata = ['user_id' => (string) $user->id, 'tier' => $tier, 'billing_cycle' => $cycle];
-
-        try {
-            $session = Cashier::stripe()->checkout->sessions->create([
-                'mode' => 'subscription',
-                'line_items' => [['price' => $priceId, 'quantity' => 1]],
-                'customer_email' => $user->email,
-                'client_reference_id' => (string) $user->id,
-                'success_url' => route('subscriptions.account-success').'?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => url('/?subscription=canceled'),
-                'metadata' => $metadata,
-                'subscription_data' => ['metadata' => $metadata],
-            ]);
-        } catch (\Throwable $exception) {
-            Log::error('Stripe account checkout error: '.$exception->getMessage(), ['user_id' => $user->id, 'tier' => $tier]);
-
-            throw new HttpException(502, 'Stripe could not start checkout. Please try again.', $exception);
-        }
-
-        return ['url' => $session->url, 'id' => $session->id];
+        throw new HttpException(409, 'Create a business listing and wait for verification before starting a paid plan.');
     }
 
     /**
@@ -217,6 +196,8 @@ class BusinessSubscriptionManager
      */
     public function createCheckout(Business $business, string $tier, string $cycle): array
     {
+        abort_unless($business->is_verified, 409, 'This business must be verified before starting a paid plan.');
+
         $priceId = $this->checkoutPriceId($tier, $cycle);
 
         $metadata = [

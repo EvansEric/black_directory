@@ -6,6 +6,7 @@ use App\Services\BusinessSubscriptionManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
@@ -98,20 +99,44 @@ it('rejects unauthenticated direct checkout requests', function () {
     ])->assertForbidden();
 });
 
-it('starts a stripe checkout for a user with no listing', function () {
+it('does not start a paid checkout for a user with no listing', function () {
     $user = User::factory()->create();
 
     $this->mock(BusinessSubscriptionManager::class)
-        ->shouldReceive('createAccountCheckout')
-        ->once()
-        ->withArgs(fn (User $u, string $tier, string $cycle) => $u->is($user) && $tier === 'standard' && $cycle === 'monthly')
-        ->andReturn(['url' => 'https://checkout.stripe.test/session', 'id' => 'cs_test_1']);
+        ->shouldNotReceive('createAccountCheckout');
 
     Livewire::actingAs($user)->test('subscription-modal')
         ->call('selectTier', 'standard')
         ->call('checkout')
-        ->assertRedirect('https://checkout.stripe.test/session')
-        ->assertNotDispatched('open-add-modal');
+        ->assertHasErrors(['plan'])
+        ->assertNoRedirect();
+});
+
+it('does not start paid checkout for an unverified listing', function () {
+    $user = User::factory()->create();
+    $business = Business::create([
+        'user_id' => $user->id, 'name' => 'Pending Shop',
+        'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x',
+    ]);
+
+    Livewire::actingAs($user)->test('subscription-modal')
+        ->call('openSubscriptionModal', $business->id, 'standard')
+        ->call('checkout')
+        ->assertHasErrors(['plan'])
+        ->assertNoRedirect();
+
+    $this->actingAs($user)->postJson(route('subscriptions.checkout'), [
+        'business_id' => $business->id,
+        'tier' => 'standard',
+        'billing_cycle' => 'monthly',
+    ])->assertStatus(409);
+});
+
+it('blocks direct account checkout before a business is verified', function () {
+    $user = User::factory()->create();
+
+    expect(fn () => app(BusinessSubscriptionManager::class)->createAccountCheckout($user, 'standard', 'monthly'))
+        ->toThrow(HttpException::class, 'Create a business listing and wait for verification');
 });
 
 it('sends a no-listing user to the add form for the free plan', function () {

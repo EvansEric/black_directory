@@ -133,7 +133,7 @@ new class extends Component
     }
 
     /**
-     * Users without a listing can still pay now; the plan attaches to their first listing.
+     * Users without a listing must create one before starting a paid plan.
      */
     private function checkoutWithoutListing(BusinessSubscriptionManager $subscriptions): mixed
     {
@@ -155,9 +155,9 @@ new class extends Component
             return null;
         }
 
-        $checkout = $subscriptions->createAccountCheckout(Auth::user(), $this->selectedTier, $this->billingCycle);
+        $this->addError('plan', 'Create your business listing and wait for verification before starting a paid plan.');
 
-        return redirect()->away($checkout['url'], 303);
+        return null;
     }
 
     private function downgradePendingPlan(BusinessSubscriptionManager $subscriptions, User $user): mixed
@@ -226,6 +226,12 @@ new class extends Component
 
             $this->dispatch('business-updated');
             $this->dispatch('close-subscription-modal');
+
+            return null;
+        }
+
+        if (! $business->is_verified) {
+            $this->addError('plan', 'This business must be verified before starting a paid plan.');
 
             return null;
         }
@@ -410,6 +416,9 @@ new class extends Component
                 @if ($this->downgradeNotice())
                     <span class="block mb-1 font-semibold text-amber-700" data-downgrade-notice><i class="fa-regular fa-clock mr-1"></i>{{ $this->downgradeNotice() }}</span>
                 @endif
+                @error('plan')
+                    <span class="block mb-1 font-semibold text-red-700" role="alert">{{ $message }}</span>
+                @enderror
                 <span>{{ $selectedTier === 'free' ? 'No payment required for the Free plan.' : 'Secure payment powered by Stripe. Pay with card, Apple Pay, Google Pay, or Link. Cancel anytime.' }}</span>
             </div>
 

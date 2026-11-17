@@ -13,20 +13,9 @@ document.addEventListener('alpine:init', () => {
         error: '',
 
         init() {
-            // Default view is businesses within 5 miles, so ask for the location up front
-            // unless the visitor already blocked it or chose "Any distance".
-            const wanted = () => this.$wire.distance !== 'any' && this.$wire.userLat === null;
-
-            if (!navigator.permissions) {
-                if (wanted()) this.locate();
-                return;
+            if (this.$wire.userLat === null && !this.$wire.location.trim()) {
+                this.locate();
             }
-
-            navigator.permissions.query({ name: 'geolocation' }).then((status) => {
-                if (status.state !== 'denied' && wanted()) {
-                    this.locate();
-                }
-            }).catch(() => {});
         },
 
         locate() {

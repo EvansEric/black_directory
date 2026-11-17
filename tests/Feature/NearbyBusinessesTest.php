@@ -35,6 +35,18 @@ it('sorts nearest first once the visitor shares their location', function () {
         ->assertSeeHtml('data-distance-badge');
 });
 
+it('shows nearby verified businesses to a guest after sharing their location', function () {
+    nearbyListing('Unverified Shop', 33.75, -84.39)->update(['is_verified' => false]);
+
+    Livewire::test('business-list')
+        ->call('setLocation', 33.7490, -84.3880)
+        ->set('distance', '10')
+        ->assertSee('Decatur Shop')
+        ->assertDontSee('Macon Shop')
+        ->assertDontSee('Unverified Shop')
+        ->assertSeeHtml('data-distance-badge');
+});
+
 it('filters by distance in miles', function () {
     Livewire::test('business-list')
         ->call('setLocation', 33.7490, -84.3880)

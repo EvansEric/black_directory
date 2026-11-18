@@ -173,6 +173,7 @@ new class extends Component
 
         $this->userLat = $lat;
         $this->userLng = $lng;
+        $this->location = '';
 
         if (Auth::guest() && $this->radius() === null) {
             $this->distance = (string) self::DEFAULT_GUEST_DISTANCE;

@@ -61,6 +61,41 @@ class Geocoder
     }
 
     /**
+     * Geocode a listing address, using its ZIP to correct a misspelled or outdated city.
+     *
+     * @return array{latitude: float, longitude: float}|null
+     */
+    public function geocodeListingAddress(?string $street, string $city, string $state, ?string $zip): ?array
+    {
+        $address = collect([$street, $city, $state, $zip])->filter()->implode(', ');
+        $coordinates = $this->geocode($address);
+
+        if ($coordinates || blank($zip) || ! preg_match('/^\d{5}$/', trim($zip))) {
+            return $coordinates;
+        }
+
+        $zipData = $this->lookupZip(trim($zip));
+
+        if (! $zipData) {
+            return null;
+        }
+
+        $canonicalCity = $zipData['city'];
+
+        if (filled($canonicalCity) && strcasecmp($canonicalCity, $city) !== 0) {
+            $correctedAddress = collect([$street, $canonicalCity, $state, $zip])->filter()->implode(', ');
+            $coordinates = $this->geocode($correctedAddress);
+        } elseif (filled($street)) {
+            $coordinates = $this->geocode(collect([$street, $state, $zip])->filter()->implode(', '));
+        }
+
+        return $coordinates ?? [
+            'latitude' => $zipData['latitude'],
+            'longitude' => $zipData['longitude'],
+        ];
+    }
+
+    /**
      * Successful zip lookups are cached.
      *
      * @return array{latitude: float, longitude: float, city: ?string}|null
@@ -110,10 +145,15 @@ class Geocoder
      */
     public function locate(Business $business): ?array
     {
-        $parts = filled($business->city) && filled($business->state)
-            ? [$business->address, $business->city, $business->state, $business->zip]
-            : [$business->address, $business->location];
+        if (filled($business->city) && filled($business->state)) {
+            return $this->geocodeListingAddress(
+                $business->address,
+                $business->city,
+                $business->state,
+                $business->zip,
+            );
+        }
 
-        return $this->geocode(collect($parts)->filter()->implode(', '));
+        return $this->geocode(collect([$business->address, $business->location])->filter()->implode(', '));
     }
 }

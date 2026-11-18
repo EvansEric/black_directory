@@ -49,6 +49,18 @@ it('shows only nearby verified businesses to a guest after sharing their locatio
         ->assertSeeHtml('data-distance-badge');
 });
 
+it('uses browser coordinates instead of a stale location text filter', function () {
+    nearbyListing('Midtown Shop', 33.7800, -84.3830);
+
+    Livewire::test('business-list')
+        ->set('location', 'Houston')
+        ->call('setLocation', 33.7490, -84.3880)
+        ->assertSet('location', '')
+        ->set('distance', '5')
+        ->assertSee('Midtown Shop')
+        ->assertDontSee('Macon Shop');
+});
+
 it('filters by distance in miles', function () {
     Livewire::test('business-list')
         ->call('setLocation', 33.7490, -84.3880)
@@ -128,8 +140,28 @@ it('geocodes an address through nominatim', function () {
     expect((new Geocoder(true))->geocode('Nowhere'))->toBeNull();
 });
 
+it('retries a street address without a misspelled city before using zip coordinates', function () {
+    Http::fake(['nominatim.openstreetmap.org/*' => Http::sequence()
+        ->push([])
+        ->push([[
+            'lat' => '29.9574563',
+            'lon' => '-95.4430199',
+            'address' => ['postcode' => '77067'],
+        ]])
+        ->push([['lat' => '29.9498112', 'lon' => '-95.4215264']])]);
+
+    $coordinates = (new Geocoder(true))->geocodeListingAddress(
+        '396 W Greens Rd',
+        'Housotn',
+        'TX',
+        '77067',
+    );
+
+    expect($coordinates)->toBe(['latitude' => 29.9498112, 'longitude' => -95.4215264]);
+});
+
 it('stores coordinates when a listing is saved', function () {
-    $this->mock(Geocoder::class)->shouldReceive('geocode')
+    $this->mock(Geocoder::class)->shouldReceive('geocodeListingAddress')
         ->andReturn(['latitude' => 33.749, 'longitude' => -84.388]);
 
     Livewire::actingAs(User::factory()->create())->test('add-business-modal')

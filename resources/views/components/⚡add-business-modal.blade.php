@@ -234,8 +234,11 @@ new class extends Component
             return [];
         }
 
-        $found = app(Geocoder::class)->geocode(
-            collect([$data['address'] ?? null, $data['city'], $data['state'], $data['zip'] ?? null])->filter()->implode(', ')
+        $found = app(Geocoder::class)->geocodeListingAddress(
+            $data['address'] ?? null,
+            $data['city'],
+            $data['state'],
+            $data['zip'] ?? null,
         );
 
         return $found ?? ['latitude' => null, 'longitude' => null];

@@ -35,15 +35,17 @@ it('sorts nearest first once the visitor shares their location', function () {
         ->assertSeeHtml('data-distance-badge');
 });
 
-it('shows nearby verified businesses to a guest after sharing their location', function () {
+it('shows only nearby verified businesses to a guest after sharing their location', function () {
     nearbyListing('Unverified Shop', 33.75, -84.39)->update(['is_verified' => false]);
 
     Livewire::test('business-list')
         ->call('setLocation', 33.7490, -84.3880)
-        ->set('distance', '10')
         ->assertSee('Decatur Shop')
         ->assertDontSee('Macon Shop')
+        ->assertDontSee('Chicago Shop')
+        ->assertDontSee('Unknown Shop')
         ->assertDontSee('Unverified Shop')
+        ->assertSet('distance', '25')
         ->assertSeeHtml('data-distance-badge');
 });
 
@@ -62,18 +64,27 @@ it('filters by distance in miles', function () {
         ->assertSee('Chicago Shop');
 });
 
-it('defaults to any distance and limits to 5 miles when chosen', function () {
+it('defaults guests to nearby businesses and allows them to choose 5 miles', function () {
     nearbyListing('Midtown Shop', 33.7800, -84.3830);
 
     Livewire::test('business-list')
         ->assertSet('distance', 'any')
         ->assertSee('Chicago Shop')
         ->call('setLocation', 33.7490, -84.3880)
-        ->assertSee('Chicago Shop')
+        ->assertSet('distance', '25')
+        ->assertDontSee('Chicago Shop')
         ->set('distance', '5')
         ->assertSee('Midtown Shop')
         ->assertDontSee('Decatur Shop')
         ->assertDontSee('Chicago Shop');
+});
+
+it('keeps any distance for signed-in users who share their location', function () {
+    Livewire::actingAs(User::factory()->create())
+        ->test('business-list')
+        ->call('setLocation', 33.7490, -84.3880)
+        ->assertSet('distance', 'any')
+        ->assertSee('Chicago Shop');
 });
 
 it('shows no distances without a location and ignores bad coordinates', function () {

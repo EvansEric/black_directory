@@ -32,6 +32,7 @@ new class extends Component
     public ?float $userLng = null;
 
     public const DISTANCES = [5, 10, 25, 50, 100];
+    public const DEFAULT_GUEST_DISTANCE = 25;
 
     #[Url(as: 'insurance')]
     public string $insuranceType = 'any';
@@ -173,6 +174,10 @@ new class extends Component
         $this->userLat = $lat;
         $this->userLng = $lng;
 
+        if (Auth::guest() && $this->radius() === null) {
+            $this->distance = (string) self::DEFAULT_GUEST_DISTANCE;
+        }
+
         // Show the closest businesses first unless the visitor picked another order.
         if ($this->sortVal === 'featured') {
             $this->sortVal = 'nearest';
@@ -288,7 +293,7 @@ new class extends Component
     }
 }; ?>
 
-<div id="directory" x-data="directorySearch">
+<div id="directory" x-data="nearMe({ autoPrompt: @js(auth()->guest()) })">
     {{-- Search Box --}}
     <div class="bg-white p-3 sm:p-4 rounded-2xl shadow-2xl max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-3 text-slate-800 -mt-10 relative z-10 mb-10">
         <div class="md:col-span-5 relative flex items-center">
@@ -299,11 +304,11 @@ new class extends Component
         <div class="md:col-span-4 relative flex items-center border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0">
             <button
                 type="button"
-                @click="askLocation(true)"
+                @click="locate()"
                 class="absolute left-4 text-slate-400 hover:text-amber-600 transition-colors focus:outline-none"
-                :title="locating ? 'Detecting location...' : 'Use my current location'"
+                :title="busy ? 'Detecting location...' : 'Use my current location'"
             >
-                <i :class="locating ? 'fa-solid fa-spinner fa-spin text-amber-500' : 'fa-solid fa-location-crosshairs'" class="text-sm"></i>
+                <i :class="busy ? 'fa-solid fa-spinner fa-spin text-amber-500' : 'fa-solid fa-location-crosshairs'" class="text-sm"></i>
             </button>
             <input type="text" wire:model.live.debounce.300ms="location" placeholder="City or Zip Code"
                 class="w-full pl-11 pr-4 py-3 bg-slate-50 md:bg-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50">
@@ -361,7 +366,7 @@ new class extends Component
                     <i class="fa-solid fa-xmark mr-1"></i> Clear Filters
                 </button>
             @endif
-            <div x-data="nearMe" class="flex items-center space-x-2" data-near-me>
+            <div class="flex items-center space-x-2" data-near-me>
                 <label for="distance-select" class="text-xs font-semibold text-slate-500"><i class="fa-solid fa-location-crosshairs mr-1 text-amber-600"></i>Distance:</label>
                 <select id="distance-select" wire:model.live="distance" @change="if ($event.target.value !== 'any' && $wire.userLat === null && ! /^\d{5}$/.test($wire.location.trim())) locate()"
                         class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">

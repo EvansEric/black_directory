@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 
-function nearMe(geolocation, wire = {}) {
+function nearMe(geolocation, wire = {}, autoPrompt = true) {
     let createNearMe;
     const context = {
         navigator: { geolocation },
@@ -19,7 +19,7 @@ function nearMe(geolocation, wire = {}) {
 
     runInNewContext(readFileSync(new URL('../../resources/js/app.js', import.meta.url), 'utf8'), context);
 
-    return Object.assign(createNearMe(), {
+    return Object.assign(createNearMe({ autoPrompt }), {
         $wire: { userLat: null, location: '', distance: 'any', ...wire },
     });
 }
@@ -44,10 +44,16 @@ test('does not request location when a location is already provided', () => {
     nearMe(geolocation, { userLat: 33.749 }).init();
 });
 
+test('does not automatically request location for a signed-in user', () => {
+    const geolocation = { getCurrentPosition: () => assert.fail('Unexpected location request') };
+
+    nearMe(geolocation, {}, false).init();
+});
+
 test('shows an error and clears the distance filter when permission is denied', () => {
     let distance;
     const component = nearMe({
-        getCurrentPosition(success, failure) { failure(); },
+        getCurrentPosition(success, failure) { failure({ code: 1 }); },
     }, { distance: '10', set: (name, value) => { distance = [name, value]; } });
 
     component.init();

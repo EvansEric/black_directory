@@ -8,12 +8,15 @@ document.addEventListener('alpine:init', () => {
         },
     });
 
-    Alpine.data('nearMe', () => ({
+
+    Alpine.data('nearMe', (options = {}) => ({
         busy: false,
         error: '',
+        automatic: options.autoPrompt ?? true,
+        attempted: false,
 
         init() {
-            if (this.$wire.userLat === null && !this.$wire.location.trim()) {
+            if (this.automatic && !this.attempted && this.$wire.userLat === null && !this.$wire.location.trim()) {
                 this.locate();
             }
         },
@@ -24,6 +27,11 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
+            if (this.busy) {
+                return;
+            }
+
+            this.attempted = true;
             this.busy = true;
             this.error = '';
 
@@ -32,92 +40,14 @@ document.addEventListener('alpine:init', () => {
                     this.busy = false;
                     this.$wire.setLocation(position.coords.latitude, position.coords.longitude);
                 },
-                () => {
+                (error) => {
                     this.busy = false;
-                    this.error = 'Allow location access to see nearby businesses.';
+                    this.error = error.code === 1
+                        ? 'Allow location access to see nearby businesses.'
+                        : 'We could not determine your location. Try again or search by city or ZIP code.';
                     this.$wire.set('distance', 'any');
                 },
                 { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
-            );
-        },
-    }));
-
-    Alpine.data('directorySearch', () => ({
-        locating: false,
-
-        init() {
-            // Do not automatically trigger geolocation on component init to prevent continuous Livewire re-render loops
-        },
-
-        askLocation(force = false) {
-            if (!navigator.geolocation) {
-                return;
-            }
-
-            this.locating = true;
-
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    try {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-
-                        let locationName = null;
-
-                        try {
-                            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
-                            if (res.ok) {
-                                const data = await res.json();
-                                const city = data.city || data.locality || '';
-                                const state = data.principalSubdivisionCode ? data.principalSubdivisionCode.replace(/^[A-Z]{2}-/, '') : (data.principalSubdivision || '');
-                                if (city && state) {
-                                    locationName = `${city}, ${state}`;
-                                } else if (city) {
-                                    locationName = city;
-                                } else if (data.postcode) {
-                                    locationName = data.postcode;
-                                }
-                            }
-                        } catch (e) {}
-
-                        if (!locationName) {
-                            try {
-                                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                                if (res.ok) {
-                                    const data = await res.json();
-                                    const addr = data.address || {};
-                                    const city = addr.city || addr.town || addr.village || addr.suburb || addr.county || '';
-                                    const state = addr.state || '';
-                                    if (city && state) {
-                                        locationName = `${city}, ${state}`;
-                                    } else if (city) {
-                                        locationName = city;
-                                    } else if (addr.postcode) {
-                                        locationName = addr.postcode;
-                                    }
-                                }
-                            } catch (e) {}
-                        }
-
-                        if (locationName && this.$wire) {
-                            if (force || !this.$wire.location) {
-                                this.$wire.set('location', locationName);
-                            }
-                        }
-                    } catch (err) {
-                        console.error('Error determining location:', err);
-                    } finally {
-                        this.locating = false;
-                    }
-                },
-                (error) => {
-                    this.locating = false;
-                },
-                {
-                    enableHighAccuracy: false,
-                    timeout: 10000,
-                    maximumAge: 300000,
-                }
             );
         },
     }));

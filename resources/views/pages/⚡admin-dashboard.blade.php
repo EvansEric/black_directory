@@ -515,9 +515,7 @@ class extends Component
                 {{-- Business Verification Section --}}
                 @if ($section === 'businesses')
                     @if (session('status'))
-                        <div role="status" class="mb-6 rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                            {{ session('status') }}
-                        </div>
+                        <x-toastr-message :message="session('status')" />
                     @endif
 
                     <div class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -581,7 +579,9 @@ class extends Component
                                     @if (! $business->is_verified)
                                         <button
                                             wire:click="verifyBusiness({{ $business->id }})"
-                                            wire:confirm="Verify this business?"
+                                            data-toastr-confirm="Verify this business?"
+                                            data-toastr-type="success"
+                                            data-toastr-confirm-label="Verify business"
                                             class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 transition"
                                         >
                                             <i class="fa-solid fa-check mr-2"></i> Verify
@@ -589,7 +589,9 @@ class extends Component
                                     @else
                                         <button
                                             wire:click="unverifyBusiness({{ $business->id }})"
-                                            wire:confirm="Remove verification?"
+                                            data-toastr-confirm="Remove verification?"
+                                            data-toastr-type="danger"
+                                            data-toastr-confirm-label="Remove verification"
                                             class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500 transition"
                                         >
                                             <i class="fa-solid fa-times mr-2"></i> Unverify
@@ -611,9 +613,7 @@ class extends Component
                 {{-- User Management Section --}}
                 @if ($section === 'user-management')
                     @if (session('status'))
-                        <div role="status" class="mb-6 rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                            {{ session('status') }}
-                        </div>
+                        <x-toastr-message :message="session('status')" />
                     @endif
 
                     <div class="mb-6">
@@ -875,7 +875,9 @@ class extends Component
                                                         <button
                                                             type="button"
                                                             wire:click="toggleUserStatus({{ $user->id }})"
-                                                            wire:confirm="Deactivate {{ $user->name }}?"
+                                                            data-toastr-confirm="Deactivate {{ $user->name }}?"
+                                                            data-toastr-type="warning"
+                                                            data-toastr-confirm-label="Deactivate"
                                                             title="Deactivate"
                                                             class="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-500 transition"
                                                         >
@@ -885,7 +887,9 @@ class extends Component
                                                         <button
                                                             type="button"
                                                             wire:click="toggleUserStatus({{ $user->id }})"
-                                                            wire:confirm="Activate {{ $user->name }}?"
+                                                            data-toastr-confirm="Activate {{ $user->name }}?"
+                                                            data-toastr-type="success"
+                                                            data-toastr-confirm-label="Activate"
                                                             title="Activate"
                                                             class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-500 transition"
                                                         >
@@ -895,7 +899,9 @@ class extends Component
                                                     <button
                                                         type="button"
                                                         wire:click="deleteUser({{ $user->id }})"
-                                                        wire:confirm="Delete {{ $user->name }}? This cannot be undone."
+                                                        data-toastr-confirm="Delete {{ $user->name }}? This cannot be undone."
+                                                        data-toastr-type="danger"
+                                                        data-toastr-confirm-label="Delete user"
                                                         title="Delete"
                                                         class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-500 transition"
                                                     >
@@ -966,7 +972,9 @@ class extends Component
                                                             @if (!$admin->is_super_admin && Auth::user()->is_super_admin)
                                                                 <button
                                                                     wire:click="makeSuperAdmin({{ $admin->id }})"
-                                                                    wire:confirm="Promote {{ $admin->name }} to Super Admin?"
+                                                                    data-toastr-confirm="Promote {{ $admin->name }} to Super Admin?"
+                                                                    data-toastr-type="warning"
+                                                                    data-toastr-confirm-label="Promote admin"
                                                                     class="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-purple-500 transition"
                                                                     title="Make Super Admin"
                                                                 >
@@ -975,7 +983,9 @@ class extends Component
                                                             @endif
                                                             <button
                                                                 wire:click="removeAdmin({{ $admin->id }})"
-                                                                wire:confirm="Remove admin from {{ $admin->name }}?"
+                                                                data-toastr-confirm="Remove admin from {{ $admin->name }}?"
+                                                                data-toastr-type="danger"
+                                                                data-toastr-confirm-label="Remove admin"
                                                                 class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-500 transition"
                                                                 title="Remove Admin"
                                                             >

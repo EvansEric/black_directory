@@ -24,10 +24,7 @@ class extends Component
     <livewire:navigation />
 
     @if (session('status'))
-        <div x-data="{ show: true }" x-show="show" role="status" class="bg-amber-500 px-4 py-2 text-center text-sm font-semibold text-slate-950">
-            {{ session('status') }}
-            <button type="button" @click="show = false" class="ml-3 underline" aria-label="Dismiss">Dismiss</button>
-        </div>
+        <x-toastr-message :message="session('status')" />
     @endif
 
     {{-- Hero Search Area --}}

@@ -10,9 +10,7 @@
             </div>
 
             @if (session('status'))
-                <div role="status" class="mb-6 rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                    {{ session('status') }}
-                </div>
+                <x-toastr-message :message="session('status')" />
             @endif
 
             <form method="GET" action="{{ route('admin.businesses.index') }}" class="mb-6 flex flex-wrap items-end gap-3">
@@ -64,7 +62,13 @@
                             @csrf
                             @method('PATCH')
                             <input type="hidden" name="is_verified" value="{{ $business->is_verified ? '0' : '1' }}">
-                            <button type="submit" onclick="return confirm('{{ $business->is_verified ? 'Remove verification and hide this business from the public?' : 'Verify this business and make it publicly visible?' }}')" class="rounded-xl px-4 py-2 text-sm font-bold text-white {{ $business->is_verified ? 'bg-red-700 hover:bg-red-600' : 'bg-emerald-700 hover:bg-emerald-600' }}">
+                            <button
+                                type="submit"
+                                data-toastr-confirm="{{ $business->is_verified ? 'Remove verification and hide this business from the public?' : 'Verify this business and make it publicly visible?' }}"
+                                data-toastr-type="{{ $business->is_verified ? 'danger' : 'success' }}"
+                                data-toastr-confirm-label="{{ $business->is_verified ? 'Remove verification' : 'Verify business' }}"
+                                class="rounded-xl px-4 py-2 text-sm font-bold text-white {{ $business->is_verified ? 'bg-red-700 hover:bg-red-600' : 'bg-emerald-700 hover:bg-emerald-600' }}"
+                            >
                                 {{ $business->is_verified ? 'Remove verification' : 'Verify business' }}
                             </button>
                         </form>

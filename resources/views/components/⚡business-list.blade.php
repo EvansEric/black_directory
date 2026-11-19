@@ -466,7 +466,9 @@ new class extends Component
                                 </button>
                                 <button
                                     wire:click="deleteBusiness({{ $business->id }})"
-                                    wire:confirm="Remove {{ $business->name }} from the directory? This cannot be undone."
+                                    data-toastr-confirm="Remove {{ $business->name }} from the directory? This cannot be undone."
+                                    data-toastr-type="danger"
+                                    data-toastr-confirm-label="Remove listing"
                                     class="absolute top-3 right-21 w-9 h-9 rounded-full bg-white/80 hover:bg-red-500 hover:text-white backdrop-blur-md flex items-center justify-center text-slate-700 transition shadow-md"
                                     title="Delete listing"
                                 >

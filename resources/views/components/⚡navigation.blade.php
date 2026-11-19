@@ -159,7 +159,9 @@ new class extends Component
                             <button
                                 type="button"
                                 wire:click="logout"
-                                wire:confirm="Are you sure you want to log out?"
+                                data-toastr-confirm="Are you sure you want to log out?"
+                                data-toastr-type="warning"
+                                data-toastr-confirm-label="Log out"
                                 class="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition"
                             >
                                 <i class="fa-solid fa-right-from-bracket mr-2"></i> Logout

@@ -214,3 +214,189 @@ button, input, select {
     border-color: #f59e0b !important;
     box-shadow: 0 4px 14px rgb(251 191 36 / 0.32);
 }
+
+.toastr-region {
+    position: fixed;
+    z-index: 100;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    width: min(24rem, calc(100vw - 2rem));
+    flex-direction: column;
+    gap: 0.75rem;
+    pointer-events: none;
+}
+
+.toastr-confirmation-region {
+    position: fixed;
+    z-index: 110;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgb(15 23 42 / 0.48);
+}
+
+.toastr-confirmation-region .toastr {
+    width: min(28rem, 100%);
+}
+
+.toastr {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.75rem;
+    padding: 1rem;
+    color: #1e293b;
+    background: rgb(255 255 255 / 0.98);
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #d97706;
+    border-radius: 0.875rem;
+    box-shadow: 0 18px 45px rgb(15 23 42 / 0.18);
+    opacity: 0;
+    transform: translateY(-0.75rem);
+    transition: opacity 180ms ease, transform 180ms ease;
+    pointer-events: auto;
+}
+
+.toastr.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toastr--success {
+    border-left-color: #059669;
+}
+
+.toastr--danger,
+.toastr--error {
+    border-left-color: #dc2626;
+}
+
+.toastr--info {
+    border-left-color: #2563eb;
+}
+
+.toastr-icon {
+    margin-top: 0.125rem;
+    color: #d97706;
+    font-size: 1.125rem;
+}
+
+.toastr--success .toastr-icon {
+    color: #059669;
+}
+
+.toastr--danger .toastr-icon,
+.toastr--error .toastr-icon {
+    color: #dc2626;
+}
+
+.toastr--info .toastr-icon {
+    color: #2563eb;
+}
+
+.toastr-content {
+    min-width: 0;
+}
+
+.toastr-title {
+    margin: 0 0 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 800;
+}
+
+.toastr-message {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.toastr-close {
+    position: absolute;
+    top: 0.375rem;
+    right: 0.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: transparent;
+    font-size: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.toastr-close::after {
+    display: block;
+    color: #64748b;
+    font-family: Arial, sans-serif;
+    font-size: 1.125rem;
+    content: "\00d7";
+}
+
+.toastr-actions {
+    grid-column: 2;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.875rem;
+}
+
+.toastr-button {
+    padding: 0.5rem 0.75rem;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    background: #d97706;
+    border: 0;
+    border-radius: 0.625rem;
+    cursor: pointer;
+}
+
+.toastr-button--secondary {
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+}
+
+.toastr-button--success {
+    background: #047857;
+}
+
+.toastr-button--danger,
+.toastr-button--error {
+    background: #b91c1c;
+}
+
+.dark .toastr {
+    color: #f8fafc;
+    background: rgb(31 27 24 / 0.98);
+    border-color: rgb(148 163 184 / 0.22);
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+}
+
+.dark .toastr-button--secondary {
+    color: #e2e8f0;
+    background: #292524;
+    border-color: rgb(148 163 184 / 0.35);
+}
+
+.dark .toastr-close::after {
+    color: #cbd5e1;
+}
+
+@media (max-width: 640px) {
+    .toastr-region {
+        top: 0.75rem;
+        right: 0.75rem;
+        left: 0.75rem;
+        width: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toastr {
+        transition: none;
+    }
+}

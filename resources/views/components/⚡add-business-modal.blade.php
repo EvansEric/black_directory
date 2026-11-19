@@ -25,6 +25,10 @@ new class extends Component
     public string $zip = '';
     public string $phone = '';
     public string $website = '';
+    public string $facebookUrl = '';
+    public string $instagramUrl = '';
+    public string $xUrl = '';
+    public string $tiktokUrl = '';
     public string $customSlug = '';
     public string $tags = '';
     public string $freeParking = '';
@@ -44,6 +48,10 @@ new class extends Component
             'zip' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
             'website' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'facebookUrl' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'instagramUrl' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'xUrl' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'tiktokUrl' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
             'customSlug' => [
                 'nullable', 'string', 'max:60', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/',
                 Rule::unique('businesses', 'custom_slug')->ignore($this->editingBusinessId),
@@ -83,6 +91,15 @@ new class extends Component
         $data['state'] = strtoupper($data['state']);
         $data['custom_slug'] = filled($data['customSlug'] ?? null) ? strtolower(trim($data['customSlug'])) : null;
         unset($data['customSlug']);
+        foreach ([
+            'facebookUrl' => 'facebook_url',
+            'instagramUrl' => 'instagram_url',
+            'xUrl' => 'x_url',
+            'tiktokUrl' => 'tiktok_url',
+        ] as $property => $column) {
+            $data[$column] = filled($data[$property] ?? null) ? trim($data[$property]) : null;
+            unset($data[$property]);
+        }
         // Parking only applies to food businesses; blank means not specified.
         $data['free_parking'] = ($data['category'] === 'Dining & Food' && $data['freeParking'] !== null && $data['freeParking'] !== '')
             ? $data['freeParking'] === '1'
@@ -109,6 +126,12 @@ new class extends Component
         if (! $this->canEditWebsite()) {
             $data['website'] = $existingBusiness?->website;
             $data['custom_slug'] = $existingBusiness?->custom_slug;
+        }
+
+        if (! $this->canEditSocialLinks()) {
+            foreach (['facebook_url', 'instagram_url', 'x_url', 'tiktok_url'] as $column) {
+                $data[$column] = $existingBusiness?->{$column};
+            }
         }
 
         $data = [...$data, ...$this->coordinatesFor($data, $existingBusiness)];
@@ -198,6 +221,10 @@ new class extends Component
         $this->zip = $business->zip ?? '';
         $this->phone = $business->phone ?? '';
         $this->website = $business->website ?? '';
+        $this->facebookUrl = $business->facebook_url ?? '';
+        $this->instagramUrl = $business->instagram_url ?? '';
+        $this->xUrl = $business->x_url ?? '';
+        $this->tiktokUrl = $business->tiktok_url ?? '';
         $this->customSlug = $business->custom_slug ?? '';
         $this->tags = implode(', ', $business->tags ?? []);
         $this->freeParking = $business->free_parking === null ? '' : ($business->free_parking ? '1' : '0');
@@ -211,7 +238,7 @@ new class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'customSlug', 'tags', 'freeParking', 'insuranceTypes', 'image', 'description', 'editingBusinessId']);
+        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'facebookUrl', 'instagramUrl', 'xUrl', 'tiktokUrl', 'customSlug', 'tags', 'freeParking', 'insuranceTypes', 'image', 'description', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
     }
@@ -272,6 +299,23 @@ new class extends Component
         }
 
         // A new listing inherits the plan the owner already pays for.
+        return SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
+    }
+
+    public function canEditSocialLinks(): bool
+    {
+        $user = Auth::user();
+
+        if ($user?->is_admin) {
+            return true;
+        }
+
+        $business = $this->currentBusiness();
+
+        if ($business || ! $user) {
+            return SubscriptionGating::canAccessSocialLinks($business);
+        }
+
         return SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
     }
 
@@ -517,6 +561,44 @@ new class extends Component
                 @else
                     <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500">
                         <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Custom link is a Standard-tier feature</span>
+                        <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                    </div>
+                @endif
+            </div>
+
+            <div>
+                <h3 class="mb-1 text-xs font-semibold text-slate-700">Social Media Links</h3>
+                @if ($this->canEditSocialLinks())
+                    <p class="mb-3 text-xs text-slate-500">Add links to your business profiles. Include the full https:// URL.</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="mb-1 block text-xs text-slate-600">Facebook (Meta)</label>
+                            <input type="url" wire:model.blur="facebookUrl" placeholder="https://facebook.com/yourbusiness"
+                                   class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            @error('facebookUrl') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs text-slate-600">Instagram</label>
+                            <input type="url" wire:model.blur="instagramUrl" placeholder="https://instagram.com/yourbusiness"
+                                   class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            @error('instagramUrl') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs text-slate-600">X</label>
+                            <input type="url" wire:model.blur="xUrl" placeholder="https://x.com/yourbusiness"
+                                   class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            @error('xUrl') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs text-slate-600">TikTok</label>
+                            <input type="url" wire:model.blur="tiktokUrl" placeholder="https://tiktok.com/@yourbusiness"
+                                   class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            @error('tiktokUrl') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                @else
+                    <div class="flex items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Social media links are a Standard-tier feature</span>
                         <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
                     </div>
                 @endif

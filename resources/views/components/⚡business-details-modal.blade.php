@@ -113,6 +113,27 @@ new class extends Component
                         @endif
                     </ul>
 
+                    @if ($business->canAccessSocialLinks())
+                        @php
+                            $socialLinks = collect([
+                                'Facebook' => [$business->facebook_url, 'fa-brands fa-facebook'],
+                                'Instagram' => [$business->instagram_url, 'fa-brands fa-instagram'],
+                                'X' => [$business->x_url, 'fa-brands fa-x-twitter'],
+                                'TikTok' => [$business->tiktok_url, 'fa-brands fa-tiktok'],
+                            ])->filter(fn (array $link) => filled($link[0]));
+                        @endphp
+                        @if ($socialLinks->isNotEmpty())
+                            <div class="flex flex-wrap gap-3" data-social-links>
+                                @foreach ($socialLinks as $label => [$url, $icon])
+                                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ $label }}"
+                                       class="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700 hover:text-amber-600">
+                                        <i class="{{ $icon }}"></i>{{ $label }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                    @endif
+
                     @if (! empty($business->tags))
                         <div class="flex flex-wrap gap-1">
                             @foreach ($business->tags as $tag)

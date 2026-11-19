@@ -29,7 +29,7 @@ class extends Component
             'description' => 'Essential custom branding for growing local businesses.',
             'monthly' => '4.99',
             'annual' => '47.90',
-            'features' => ['1 Business Listing', 'Custom Website Link', 'Logo & Business Image', 'Rich Business Description'],
+            'features' => ['1 Business Listing', 'Custom Website Link', 'Logo & Business Image', 'Rich Business Description', 'Social Media Links'],
         ],
         [
             'key' => 'pro',

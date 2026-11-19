@@ -40,7 +40,7 @@ class SubscriptionGating
             'annual_price' => 47.90,
             'stripe_monthly_price_id' => 'price_standard_monthly',
             'stripe_annual_price_id' => 'price_standard_annual',
-            'features' => ['1 Business Listing', 'Custom Link', 'Logo Upload', 'Business Description'],
+            'features' => ['1 Business Listing', 'Custom Link', 'Logo Upload', 'Business Description', 'Social Media Links'],
             'priority' => 1,
         ],
         self::TIER_PRO => [
@@ -137,6 +137,14 @@ class SubscriptionGating
     }
 
     /**
+     * Check if a listing can display and manage social media links.
+     */
+    public static function canAccessSocialLinks(?Business $listing): bool
+    {
+        return self::hasStandardFeatures($listing);
+    }
+
+    /**
      * Check if a listing has access to business description.
      */
     public static function canAccessDescription(?Business $listing): bool
@@ -208,6 +216,7 @@ class SubscriptionGating
         return match ($feature) {
             'logo', 'image' => self::canAccessLogo($listing),
             'custom_url', 'website', 'custom_link' => self::canAccessCustomUrl($listing),
+            'social_links' => self::canAccessSocialLinks($listing),
             'description' => self::canAccessDescription($listing),
             'lead_forms', 'lead_form', 'leads' => self::canAccessLeadForms($listing),
             'spotlight', 'homepage_spotlight', 'banner' => self::canAccessSpotlight($listing),

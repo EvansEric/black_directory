@@ -29,6 +29,10 @@ class Business extends Model
         'longitude',
         'phone',
         'website',
+        'facebook_url',
+        'instagram_url',
+        'x_url',
+        'tiktok_url',
         'custom_slug',
         'image',
         'description',
@@ -163,6 +167,15 @@ class Business extends Model
         }
 
         return SubscriptionGating::canAccessCustomUrl($this);
+    }
+
+    public function canAccessSocialLinks(): bool
+    {
+        if ($this->user?->is_admin) {
+            return true;
+        }
+
+        return SubscriptionGating::canAccessSocialLinks($this);
     }
 
     public function canAccessDescription(): bool

@@ -275,14 +275,19 @@ class Business extends Model
             return $query->orderBy('name');
         }
 
+        $now = now()->toDateTimeString();
+
         $query->orderByRaw("
             CASE
-                WHEN subscription_tier = 'spotlight' AND (subscription_status = 'active' OR subscription_status = 'trialing' OR subscription_status IS NULL) THEN 4
-                WHEN (subscription_tier = 'pro' OR subscription_tier = 'featured' OR featured = 1) AND (subscription_status = 'active' OR subscription_status = 'trialing' OR subscription_status IS NULL) THEN 3
-                WHEN (subscription_tier = 'standard' OR subscription_tier = 'basic') AND (subscription_status = 'active' OR subscription_status = 'trialing' OR subscription_status IS NULL) THEN 2
+                WHEN subscription_tier = 'spotlight'
+                    AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 4
+                WHEN (subscription_tier = 'pro' OR subscription_tier = 'featured' OR featured = 1)
+                    AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 3
+                WHEN (subscription_tier = 'standard' OR subscription_tier = 'basic')
+                    AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 2
                 ELSE 1
             END DESC
-        ");
+        ", [$now, $now, $now]);
 
         return match ($secondarySort) {
             'rating' => $query->orderByDesc('rating')->orderByDesc('created_at'),

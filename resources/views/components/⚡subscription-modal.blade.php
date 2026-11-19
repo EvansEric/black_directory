@@ -384,7 +384,7 @@ new class extends Component
                     <p class="text-xs text-slate-500 mb-4">Priority placement & direct customer lead forms.</p>
 
                     <div class="mb-4">
-                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '105.50' : '10.99' }}</span>
+                        <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '95.90' : '9.99' }}</span>
                         <span class="text-xs text-slate-500">/{{ $billingCycle === 'annual' ? 'year' : 'month' }}</span>
                     </div>
 
@@ -429,7 +429,7 @@ new class extends Component
                 wire:loading.attr="disabled" wire:target="checkout"
                 @disabled($this->isCurrentSelection())
             >
-                <span wire:loading.remove wire:target="checkout">{{ $this->isCurrentSelection() ? 'This is your current plan' : ($selectedTier === 'free' ? 'Choose Free Plan' : 'Proceed to Checkout ($'.($selectedTier === 'pro' ? ($billingCycle === 'annual' ? '105.50/yr' : '10.99/mo') : ($billingCycle === 'annual' ? '47.90/yr' : '4.99/mo')).')') }}</span>
+                <span wire:loading.remove wire:target="checkout">{{ $this->isCurrentSelection() ? 'This is your current plan' : ($selectedTier === 'free' ? 'Choose Free Plan' : 'Proceed to Checkout ($'.($selectedTier === 'pro' ? ($billingCycle === 'annual' ? '95.90/yr' : '9.99/mo') : ($billingCycle === 'annual' ? '47.90/yr' : '4.99/mo')).')') }}</span>
                 <span wire:loading wire:target="checkout">Preparing Checkout...</span>
             </button>
         </div>

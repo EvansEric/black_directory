@@ -183,16 +183,16 @@ test('subscription checkout and cancellation routes work', function () {
         ->assertJsonPath('tiers.free.monthly_price', 0)
         ->assertJsonPath('tiers.standard.monthly_price', 4.99)
         ->assertJsonPath('tiers.standard.annual_price', 47.90)
-        ->assertJsonPath('tiers.pro.monthly_price', 10.99)
-        ->assertJsonPath('tiers.pro.annual_price', 105.50)
+        ->assertJsonPath('tiers.pro.monthly_price', 9.99)
+        ->assertJsonPath('tiers.pro.annual_price', 95.90)
         ->assertJsonMissingPath('tiers.spotlight');
 
     $this->get(route('pricing'))
         ->assertOk()
         ->assertSee('$4.99')
         ->assertSee('$47.90/year')
-        ->assertSee('$10.99')
-        ->assertSee('$105.50/year');
+        ->assertSee('$9.99')
+        ->assertSee('$95.90/year');
 
     // Checkout must not grant access when Stripe is not configured.
     config(['services.stripe.prices.pro.monthly' => null]);
@@ -402,6 +402,45 @@ test('listings search and directory queries order results by tier priority', fun
         $pro->id,
         $spotlight->id,
     ]);
+});
+
+it('keeps priority search placement through a canceled subscription period', function () {
+    $owner = User::factory()->create();
+    $free = Business::create([
+        'is_verified' => true,
+        'user_id' => $owner->id,
+        'name' => 'A Free Bakery',
+        'category' => 'Dining & Food',
+        'location' => 'Atlanta, GA',
+        'description' => 'Bakery',
+        'subscription_tier' => 'free',
+        'subscription_status' => 'active',
+    ]);
+    $pro = Business::create([
+        'is_verified' => true,
+        'user_id' => $owner->id,
+        'name' => 'Z Pro Bakery',
+        'category' => 'Dining & Food',
+        'location' => 'Atlanta, GA',
+        'description' => 'Bakery',
+        'subscription_tier' => 'pro',
+        'subscription_status' => 'canceled',
+        'subscription_ends_at' => now()->addWeek(),
+    ]);
+    $pro->forceFill(['created_at' => now()->subDay()])->save();
+
+    Livewire::test('business-list')
+        ->set('search', 'Bakery')
+        ->assertSeeInOrder(['Z Pro Bakery', 'A Free Bakery']);
+
+    $pro->update(['subscription_ends_at' => now()->subDay()]);
+
+    Livewire::test('business-list')
+        ->set('search', 'Bakery')
+        ->assertSeeInOrder(['A Free Bakery', 'Z Pro Bakery']);
+
+    expect($free->fresh()->canAccessPrioritySearch())->toBeFalse()
+        ->and($pro->fresh()->canAccessPrioritySearch())->toBeFalse();
 });
 
 it('syncs the plan from a Stripe subscription object', function () {

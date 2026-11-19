@@ -46,8 +46,8 @@ class SubscriptionGating
         self::TIER_PRO => [
             'key' => self::TIER_PRO,
             'name' => 'Pro',
-            'monthly_price' => 10.99,
-            'annual_price' => 105.50,
+            'monthly_price' => 9.99,
+            'annual_price' => 95.90,
             'stripe_monthly_price_id' => 'price_pro_monthly',
             'stripe_annual_price_id' => 'price_pro_annual',
             'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Lead Generation Forms', 'All Standard Features'],

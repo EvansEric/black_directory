@@ -21,11 +21,13 @@
                         Add a Business
                     </button>
                 </li>
-                <li>
-                    <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">
-                        Pricing & Listing Plans
-                    </a>
-                </li>
+                @if (! auth()->check() || (! auth()->user()->is_admin && \App\Services\SubscriptionGating::ownerHasVerifiedBusiness(auth()->user())))
+                    <li>
+                        <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">
+                            Pricing & Listing Plans
+                        </a>
+                    </li>
+                @endif
                 <li>
                     <a href="{{ route('listing-disclosure') }}" class="transition hover:text-slate-950">
                         Listing & Subscription Disclosure

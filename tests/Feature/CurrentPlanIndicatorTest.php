@@ -58,7 +58,7 @@ it('shows no current plan badge to guests on the pricing page', function () {
     Livewire::test('pages::pricing')->assertDontSeeHtml('data-current-plan-badge');
 });
 
-it('shows a paid plan that is waiting for a first listing', function () {
+it('keeps a paid plan that is waiting for a listing hidden and on Free', function () {
     $user = User::factory()->create();
     $user->forceFill([
         'pending_stripe_session_id' => 'cs_test_paid',
@@ -67,13 +67,15 @@ it('shows a paid plan that is waiting for a first listing', function () {
     ])->save();
 
     Livewire::actingAs($user)->test('navigation')
-        ->assertSee('Standard')
-        ->assertSeeHtml('data-plan-pending');
+        ->assertSee('Free')
+        ->assertDontSeeHtml('data-plan-pending')
+        ->assertSee('Pending verification');
 
-    Livewire::actingAs($user)->test('pages::pricing')->assertSee('Manage Standard (current)');
+    Livewire::actingAs($user)->test('pages::pricing')->assertRedirect('/');
     Livewire::actingAs($user)->test('subscription-modal')
-        ->call('selectTier', 'standard')
-        ->assertSeeHtml('data-current-plan-badge');
+        ->call('openSubscriptionModal', null, 'standard')
+        ->assertNotDispatched('show-subscription-modal')
+        ->assertDontSee('Choose Your Listing Plan');
 });
 
 it('shows the time left on a paid plan before downgrading to free', function () {
@@ -117,7 +119,7 @@ it('redirects with the time left after downgrading to free', function () {
     expect(session('status'))->toContain('Your Standard plan stays active for');
 });
 
-it('downgrades a paid plan that is waiting for a listing and shows the time left', function () {
+it('ignores a paid plan that is waiting for an unverified listing', function () {
     $user = User::factory()->create();
     $user->forceFill([
         'pending_stripe_session_id' => 'cs_test_paid',
@@ -125,27 +127,16 @@ it('downgrades a paid plan that is waiting for a listing and shows the time left
         'pending_billing_cycle' => 'monthly',
     ])->save();
 
-    $this->mock(BusinessSubscriptionManager::class)
-        ->shouldReceive('cancelPendingPlan')
-        ->once()
-        ->andReturnUsing(function (User $u): bool {
-            $u->forceFill(['pending_plan_ends_at' => now()->addDays(20)])->save();
-
-            return true;
-        });
+    $this->mock(BusinessSubscriptionManager::class)->shouldNotReceive('cancelPendingPlan');
 
     Livewire::actingAs($user)->test('subscription-modal')
         ->call('selectTier', 'free')
-        ->assertSeeHtml('data-downgrade-notice')
-        ->call('checkout')
-        ->assertRedirect('/')
-        ->assertNotDispatched('open-add-modal');
-
-    expect(session('status'))->toContain('Your Standard plan stays active for 20 days');
+        ->assertDontSeeHtml('data-downgrade-notice')
+        ->call('checkout');
 
     Livewire::actingAs($user->fresh())->test('navigation')
-        ->assertSee('Standard')
-        ->assertSee('then Free');
+        ->assertSee('Free')
+        ->assertDontSeeHtml('data-plan-pending');
 });
 
 it('falls back to Free once a downgraded pending plan has lapsed', function () {

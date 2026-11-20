@@ -2,7 +2,6 @@
 
 use App\Models\Business;
 use App\Models\User;
-use App\Services\BusinessSubscriptionManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -121,12 +120,10 @@ it('retains existing plain descriptions without interpreting markdown', function
         ->assertDontSeeHtml('<strong>$5</strong>');
 });
 
-it('allows Standard and Pro account plans to upload a logo on their first listing', function (string $tier) {
+it('keeps paid features unavailable on a first unverified listing', function (string $tier) {
     Storage::fake('public');
     $user = User::factory()->create();
     $user->forceFill(['pending_stripe_session_id' => 'pending', 'pending_plan_tier' => $tier])->save();
-    $this->mock(BusinessSubscriptionManager::class)
-        ->shouldReceive('claimPendingPlan')->once()->andReturnTrue();
 
     Livewire::actingAs($user)->test('add-business-modal')
         ->set('name', 'First Shop')
@@ -139,17 +136,15 @@ it('allows Standard and Pro account plans to upload a logo on their first listin
         ->assertHasNoErrors();
 
     $business = $user->businesses()->firstOrFail();
-    expect($business->has_rich_description)->toBeTrue()
-        ->and($business->website)->toBe('https://example.com')
-        ->and($business->image)->not->toBeNull();
-    Storage::disk('public')->assertExists($business->image);
+    expect($business->has_rich_description)->toBeFalse()
+        ->and($business->website)->toBeNull()
+        ->and($business->image)->toBeNull()
+        ->and($business->subscription_tier)->toBe('free');
 })->with(['standard', 'pro']);
 
-it('gives additional Pro listings Standard features only while the owner plan is active', function () {
+it('gives additional Pro listings Standard features only after verification', function () {
     Storage::fake('public');
     $primary = descriptionBusiness('pro');
-    $this->mock(BusinessSubscriptionManager::class)
-        ->shouldReceive('claimPendingPlan')->once()->andReturnFalse();
 
     Livewire::actingAs($primary->user)->test('add-business-modal')
         ->set('name', 'Second Shop')
@@ -163,22 +158,26 @@ it('gives additional Pro listings Standard features only while the owner plan is
 
     $second = $primary->user->businesses()->where('name', 'Second Shop')->firstOrFail();
     expect($second->subscription_tier)->toBe('free')
-        ->and($second->has_rich_description)->toBeTrue()
-        ->and($second->canAccessLogo())->toBeTrue()
-        ->and($second->canAccessCustomUrl())->toBeTrue()
-        ->and($second->canAccessDescription())->toBeTrue();
-
-    Storage::disk('public')->assertExists($second->image);
+        ->and($second->has_rich_description)->toBeFalse()
+        ->and($second->canAccessLogo())->toBeFalse()
+        ->and($second->canAccessCustomUrl())->toBeFalse()
+        ->and($second->canAccessDescription())->toBeFalse()
+        ->and($second->image)->toBeNull()
+        ->and($second->website)->toBeNull();
 
     Livewire::actingAs($primary->user)->test('add-business-modal')
         ->call('editBusiness', $second->id)
-        ->assertSee('Description formatting')
-        ->assertSeeHtml('wire:model="image"')
-        ->assertSeeHtml('wire:model.blur="website"');
+        ->assertDontSee('Description formatting')
+        ->assertDontSeeHtml('wire:model="image"')
+        ->assertDontSeeHtml('wire:model.blur="website"');
 
     $second->update(['is_verified' => true]);
+    expect($second->canAccessLogo())->toBeTrue()
+        ->and($second->canAccessCustomUrl())->toBeTrue()
+        ->and($second->canAccessDescription())->toBeTrue();
+
     Livewire::test('business-details-modal')->call('open', $second->id)
-        ->assertSeeHtml('<strong>second</strong>');
+        ->assertDontSeeHtml('<strong>second</strong>');
 
     $primary->update(['subscription_status' => 'canceled', 'subscription_ends_at' => now()->subDay()]);
     $second = $second->fresh();

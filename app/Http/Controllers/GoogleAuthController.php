@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\GoogleAuthenticator;
 use App\Services\PendingPlanSelection;
+use App\Services\SubscriptionGating;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
@@ -37,9 +38,13 @@ class GoogleAuthController extends Controller
         Auth::login($user, remember: true);
         request()->session()->regenerate();
 
-        if (app(PendingPlanSelection::class)->exists()) {
+        $selection = app(PendingPlanSelection::class);
+
+        if ($selection->exists() && SubscriptionGating::ownerHasVerifiedBusiness($user)) {
             return redirect()->route('pricing');
         }
+
+        $selection->forget();
 
         return redirect()->intended(route('home'));
     }

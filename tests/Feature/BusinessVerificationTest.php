@@ -21,7 +21,10 @@ it('hides unverified listings from the public but shows them to the owner and ad
 
     Livewire::test('business-list')->assertDontSee('Pending Shop');
     Livewire::actingAs(User::factory()->create())->test('business-list')->assertDontSee('Pending Shop');
-    Livewire::actingAs($owner)->test('business-list')->assertSee('Pending Shop');
+    Livewire::actingAs($owner)->test('business-list')
+        ->assertSee('Pending Shop')
+        ->assertDontSee('title="Upgrade subscription"', false)
+        ->assertDontSee('title="View listing plans"', false);
     Livewire::actingAs(User::factory()->create(['is_admin' => true]))->test('business-list')->assertSee('Pending Shop');
 });
 

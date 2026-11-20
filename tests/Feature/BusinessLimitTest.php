@@ -83,11 +83,11 @@ it('offers free owners Standard features and editing without promising another l
         ->assertHasErrors('name')
         ->assertSeeHtml('data-form-locked')
         ->assertSeeHtml('data-form-lock-overlay')
-        ->assertSee('Standard adds features to your existing listing, but still allows only 1 listing.')
-        ->assertSee('Upgrade to Standard for more features')
+        ->assertSee('Your listing must be verified before you can choose a paid plan.')
+        ->assertDontSee('Upgrade to Standard for more features')
         ->assertSee('Edit existing listing')
         ->assertDontSee('Upgrade to Pro')
-        ->assertSeeHtml("tier: 'standard', businessId: {$business->id}");
+        ->assertDontSee('open-subscription-modal', false);
 
     $component->call('editBusiness', $business->id)
         ->assertSet('editingBusinessId', $business->id)
@@ -121,7 +121,7 @@ it('keeps the form locked after a free listing is upgraded to Standard', functio
     submitListing($user, 'Another')
         ->assertHasErrors('name')
         ->assertSeeHtml('data-form-locked')
-        ->assertSee('Upgrade to Pro to unlock');
+        ->assertDontSee('Upgrade to Pro to unlock');
 
     expect($user->businesses()->count())->toBe(1);
 });

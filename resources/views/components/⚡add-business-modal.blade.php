@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Business;
-use App\Services\BusinessSubscriptionManager;
 use App\Services\BusinessDescription;
 use App\Services\Geocoder;
 use App\Services\QrCodeGenerator;
@@ -53,8 +52,9 @@ new class extends Component
             'xUrl' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
             'tiktokUrl' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
             'customSlug' => [
-                'nullable', 'string', 'max:60', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/',
-                Rule::unique('businesses', 'custom_slug')->ignore($this->editingBusinessId),
+                ...($this->canEditWebsite()
+                    ? ['nullable', 'string', 'max:60', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/', Rule::unique('businesses', 'custom_slug')->ignore($this->editingBusinessId)]
+                    : ['nullable']),
             ],
             'tags' => ['nullable', 'string', 'max:1000'],
             'freeParking' => ['nullable', 'in:0,1'],
@@ -182,9 +182,11 @@ new class extends Component
                 'rating' => 5.0,
                 'reviews_count' => 0,
                 'featured' => true,
+                'subscription_tier' => SubscriptionGating::TIER_FREE,
+                'subscription_status' => 'active',
+                'billing_cycle' => null,
+                'subscription_ends_at' => null,
             ]);
-
-            app(BusinessSubscriptionManager::class)->claimPendingPlan(Auth::user(), $business);
         }
 
         $this->resetForm();
@@ -298,8 +300,7 @@ new class extends Component
             return SubscriptionGating::canAccessCustomUrl($business);
         }
 
-        // A new listing inherits the plan the owner already pays for.
-        return SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
+        return false;
     }
 
     public function canEditSocialLinks(): bool
@@ -316,12 +317,17 @@ new class extends Component
             return SubscriptionGating::canAccessSocialLinks($business);
         }
 
-        return SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
+        return false;
     }
 
     public function limitMessage(): string
     {
         $user = Auth::user();
+
+        if (! SubscriptionGating::ownerHasVerifiedBusiness($user)) {
+            return 'Your listing must be verified before you can choose a paid plan.';
+        }
+
         $limit = SubscriptionGating::businessLimit($user);
         $tier = SubscriptionGating::getOwnerTier($user);
         $plan = SubscriptionGating::TIERS[$tier]['name'];
@@ -349,6 +355,21 @@ new class extends Component
             && ! SubscriptionGating::canAddBusiness($user);
     }
 
+    public function canAccessPaidPlans(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return false;
+        }
+
+        $business = $this->currentBusiness();
+
+        return $business
+            ? SubscriptionGating::canPurchasePaidPlan($user, $business)
+            : SubscriptionGating::canPurchasePaidPlan($user);
+    }
+
     public function canEditLogo(): bool
     {
         $user = Auth::user();
@@ -361,7 +382,7 @@ new class extends Component
 
         return $business
             ? SubscriptionGating::canAccessLogo($business)
-            : $user && SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
+            : false;
     }
 
     public function canEditRichDescription(): bool
@@ -376,7 +397,7 @@ new class extends Component
 
         return $business
             ? SubscriptionGating::canAccessDescription($business)
-            : $user && SubscriptionGating::getOwnerTier($user) !== SubscriptionGating::TIER_FREE;
+            : false;
     }
 
     private function currentBusiness(): ?Business
@@ -428,17 +449,21 @@ new class extends Component
                                     class="mt-2 rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-white shadow hover:bg-slate-700">
                                 Edit existing listing
                             </button>
-                            <button type="button"
-                                    @click="open = false; $dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $existingBusinessId }} })"
-                                    class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
-                                <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Standard for more features
-                            </button>
+                            @if ($this->canAccessPaidPlans())
+                                <button type="button"
+                                        @click="open = false; $dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $existingBusinessId }} })"
+                                        class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
+                                    <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Standard for more features
+                                </button>
+                            @endif
                         @else
-                            <button type="button" x-data
-                                    @click="$dispatch('open-subscription-modal', { tier: 'pro', businessId: {{ $existingBusinessId ?? 'null' }} })"
-                                    class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
-                                <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Pro to unlock
-                            </button>
+                            @if ($this->canAccessPaidPlans())
+                                <button type="button" x-data
+                                        @click="$dispatch('open-subscription-modal', { tier: 'pro', businessId: {{ $existingBusinessId ?? 'null' }} })"
+                                        class="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white shadow hover:bg-amber-500">
+                                    <i class="fa-solid fa-bolt mr-1"></i> Upgrade to Pro to unlock
+                                </button>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -561,7 +586,9 @@ new class extends Component
                 @else
                     <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500">
                         <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Custom link is a Standard-tier feature</span>
-                        <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                        @if ($this->canAccessPaidPlans())
+                            <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -599,7 +626,9 @@ new class extends Component
                 @else
                     <div class="flex items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
                         <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Social media links are a Standard-tier feature</span>
-                        <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                        @if ($this->canAccessPaidPlans())
+                            <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -650,7 +679,9 @@ new class extends Component
                 @else
                     <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500">
                         <span class="flex items-center gap-1.5"><i class="fa-solid fa-lock text-slate-400"></i> Logo upload is a Standard-tier feature</span>
-                        <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                        @if ($this->canAccessPaidPlans())
+                            <button type="button" x-data @click="$dispatch('open-subscription-modal', { tier: 'standard', businessId: {{ $editingBusinessId ?? 'null' }} })" class="font-bold text-amber-600 hover:text-amber-500">Upgrade</button>
+                        @endif
                     </div>
                 @endif
             </div>

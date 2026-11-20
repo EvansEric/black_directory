@@ -44,9 +44,10 @@ class extends Component
 
     public function mount(PendingPlanSelection $selection): void
     {
-        // Admins are redirected away from the pricing page
-        if (Auth::check() && Auth::user()->is_admin) {
+        if (Auth::check() && (Auth::user()->is_admin || ! SubscriptionGating::ownerHasVerifiedBusiness(Auth::user()))) {
+            $selection->forget();
             $this->redirect('/');
+            return;
         }
 
         if (Auth::check()) {

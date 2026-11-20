@@ -97,7 +97,7 @@ class SubscriptionGating
      */
     public static function getEffectiveTier(?Business $listing): string
     {
-        if (! $listing) {
+        if (! $listing || ! $listing->is_verified) {
             return self::TIER_FREE;
         }
 
@@ -154,7 +154,7 @@ class SubscriptionGating
 
     private static function hasStandardFeatures(?Business $listing): bool
     {
-        if (! $listing) {
+        if (! $listing || ! $listing->is_verified) {
             return false;
         }
 
@@ -236,7 +236,21 @@ class SubscriptionGating
             return self::getEffectiveTier($business);
         }
 
-        return self::pendingTier($user) ?? self::TIER_FREE;
+        return self::ownerHasVerifiedBusiness($user)
+            ? (self::pendingTier($user) ?? self::TIER_FREE)
+            : self::TIER_FREE;
+    }
+
+    public static function ownerHasVerifiedBusiness(User $user): bool
+    {
+        return $user->businesses()->where('is_verified', true)->exists();
+    }
+
+    public static function canPurchasePaidPlan(User $user, ?Business $business = null): bool
+    {
+        return $business
+            ? $business->user_id === $user->getKey() && $business->is_verified
+            : self::ownerHasVerifiedBusiness($user);
     }
 
     /**
@@ -244,6 +258,10 @@ class SubscriptionGating
      */
     public static function pendingTier(User $user): ?string
     {
+        if (! self::ownerHasVerifiedBusiness($user)) {
+            return null;
+        }
+
         $tier = $user->pending_plan_tier;
 
         if (blank($user->pending_stripe_session_id) || ! isset(self::TIERS[$tier])) {

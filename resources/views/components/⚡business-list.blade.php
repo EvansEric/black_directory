@@ -476,13 +476,15 @@ new class extends Component
                                 >
                                     <i class="fa-solid fa-trash text-sm"></i>
                                 </button>
-                                <button
-                                    @click="$dispatch('open-subscription-modal', { businessId: {{ $business->id }} })"
-                                    class="absolute top-3 right-30 w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 backdrop-blur-md flex items-center justify-center font-bold transition shadow-md"
-                                    title="Upgrade subscription"
-                                >
-                                    <i class="fa-solid fa-bolt text-sm"></i>
-                                </button>
+                                @if ($business->is_verified)
+                                    <button
+                                        @click="$dispatch('open-subscription-modal', { businessId: {{ $business->id }} })"
+                                        class="absolute top-3 right-30 w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 backdrop-blur-md flex items-center justify-center font-bold transition shadow-md"
+                                        title="Upgrade subscription"
+                                    >
+                                        <i class="fa-solid fa-bolt text-sm"></i>
+                                    </button>
+                                @endif
                             @endif
                         @endauth
 

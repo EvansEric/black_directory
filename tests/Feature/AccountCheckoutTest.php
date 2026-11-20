@@ -45,12 +45,10 @@ it('resumes the selected plan after registering without starting checkout', func
         ->set('registerPassword', 'password123')
         ->set('registerPassword_confirmation', 'password123')
         ->call('register')
-        ->assertRedirect(route('pricing'));
+        ->assertRedirect('/');
 
     $this->assertAuthenticated();
-    Livewire::test('pages::pricing')
-        ->assertSet('resumePlan', ['tier' => 'pro', 'cycle' => 'annual'])
-        ->assertSee('open-subscription-modal', false);
+    Livewire::test('pages::pricing')->assertRedirect('/');
     expect(session()->has('pending_plan_selection'))->toBeFalse();
 });
 
@@ -62,10 +60,10 @@ it('resumes the selected plan after signing in', function () {
         ->set('loginEmail', $user->email)
         ->set('loginPassword', 'password123')
         ->call('login')
-        ->assertRedirect(route('pricing'));
+        ->assertRedirect('/');
 
     $this->assertAuthenticatedAs($user);
-    Livewire::test('pages::pricing')->assertSet('resumePlan', ['tier' => 'standard', 'cycle' => 'monthly']);
+    Livewire::test('pages::pricing')->assertRedirect('/');
 });
 
 it('clears the selected plan when the authentication prompt is dismissed', function () {
@@ -76,8 +74,18 @@ it('clears the selected plan when the authentication prompt is dismissed', funct
     expect(session()->has('pending_plan_selection'))->toBeFalse();
 });
 
-it('restores the selected plan and billing cycle for an authenticated user', function () {
-    Livewire::actingAs(User::factory()->create())->test('subscription-modal')
+it('restores the selected plan and billing cycle for an authenticated user with a verified listing', function () {
+    $user = User::factory()->create();
+    Business::create([
+        'user_id' => $user->id,
+        'is_verified' => true,
+        'name' => 'Verified Shop',
+        'category' => 'Retail & Fashion',
+        'location' => 'Atlanta, GA',
+        'description' => 'x',
+    ]);
+
+    Livewire::actingAs($user)->test('subscription-modal')
         ->call('openSubscriptionModal', null, 'pro', 'annual')
         ->assertSet('selectedTier', 'pro')
         ->assertSet('billingCycle', 'annual')
@@ -147,7 +155,7 @@ it('sends a no-listing user to the add form for the free plan', function () {
         ->assertNoRedirect();
 });
 
-it('does not charge twice while a paid plan is waiting for a listing', function () {
+it('blocks a paid plan that is waiting for a listing', function () {
     $user = User::factory()->create();
     $user->forceFill(['pending_stripe_session_id' => 'cs_test_paid'])->save();
 
@@ -156,16 +164,15 @@ it('does not charge twice while a paid plan is waiting for a listing', function 
     Livewire::actingAs($user)->test('subscription-modal')
         ->call('selectTier', 'standard')
         ->call('checkout')
-        ->assertDispatched('open-add-modal');
+        ->assertHasErrors(['plan'])
+        ->assertNotDispatched('open-add-modal');
 });
 
-it('claims a pending paid plan when the first listing is created', function () {
+it('keeps a new listing on the free plan until it is verified', function () {
     $user = User::factory()->create();
 
     $this->mock(BusinessSubscriptionManager::class)
-        ->shouldReceive('claimPendingPlan')
-        ->once()
-        ->withArgs(fn (User $u, Business $b) => $u->is($user));
+        ->shouldNotReceive('claimPendingPlan');
 
     Livewire::actingAs($user)->test('add-business-modal')
         ->set('name', 'First Shop')
@@ -175,6 +182,9 @@ it('claims a pending paid plan when the first listing is created', function () {
         ->set('description', 'Hello')
         ->call('save')
         ->assertHasNoErrors();
+
+    expect($user->businesses()->sole()->subscription_tier)->toBe('free')
+        ->and($user->businesses()->sole()->is_verified)->toBeFalse();
 });
 
 it('ignores a claim when nothing is pending', function () {

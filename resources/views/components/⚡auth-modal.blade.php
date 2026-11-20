@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Services\PendingPlanSelection;
+use App\Services\SubscriptionGating;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -112,9 +113,15 @@ new class extends Component
 
     private function afterAuthenticationUrl(): string
     {
-        return app(PendingPlanSelection::class)->exists()
-            ? route('pricing')
-            : (request()->header('Referer') ?? '/');
+        $selection = app(PendingPlanSelection::class);
+
+        if ($selection->exists() && SubscriptionGating::ownerHasVerifiedBusiness(Auth::user())) {
+            return route('pricing');
+        }
+
+        $selection->forget();
+
+        return request()->header('Referer') ?? '/';
     }
 }; ?>
 

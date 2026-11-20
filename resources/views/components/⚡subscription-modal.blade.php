@@ -17,9 +17,34 @@ new class extends Component
     public string $selectedTier = 'pro';
     public string $billingCycle = 'monthly';
 
+    public function canAccessPlans(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return true;
+        }
+
+        return $this->business
+            ? SubscriptionGating::canPurchasePaidPlan($user, $this->business)
+            : SubscriptionGating::canPurchasePaidPlan($user);
+    }
+
     #[On('open-subscription-modal')]
     public function openSubscriptionModal(?int $businessId = null, ?string $tier = null, ?string $cycle = null): void
     {
+        if (Auth::check()) {
+            $requestedBusiness = $businessId ? Business::find($businessId) : null;
+
+            if ($requestedBusiness && $requestedBusiness->user_id !== Auth::id()) {
+                abort(403, 'Unauthorized to manage subscription for this listing.');
+            }
+
+            if (! SubscriptionGating::canPurchasePaidPlan(Auth::user(), $requestedBusiness)) {
+                return;
+            }
+        }
+
         if ($tier && in_array($tier, ['free', 'standard', 'pro'], true)) {
             $this->selectedTier = $tier;
         }
@@ -44,7 +69,8 @@ new class extends Component
                 $this->billingCycle = $this->business->billing_cycle ?? 'monthly';
             }
         } elseif (Auth::check()) {
-            $userBusiness = SubscriptionGating::getOwnerPlanBusiness(Auth::user()) ?? Auth::user()->businesses()->first();
+            $userBusiness = SubscriptionGating::getOwnerPlanBusiness(Auth::user())
+                ?? Auth::user()->businesses()->where('is_verified', true)->first();
             if ($userBusiness) {
                 $this->businessId = $userBusiness->id;
                 $this->business = $userBusiness;
@@ -196,6 +222,13 @@ new class extends Component
             return null;
         }
 
+        if ($this->selectedTier !== SubscriptionGating::TIER_FREE
+            && ! SubscriptionGating::canPurchasePaidPlan(Auth::user(), $this->business)) {
+            $this->addError('plan', 'Create a business listing and wait for verification before choosing a paid plan.');
+
+            return null;
+        }
+
         if (! $this->businessId) {
             return $this->checkoutWithoutListing($subscriptions);
         }
@@ -265,10 +298,11 @@ new class extends Component
     x-transition:leave="transition ease-in duration-200"
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0"
-    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto {{ $this->canAccessPlans() ? '' : 'hidden' }}"
     style="display: none;"
     @keydown.escape.window="open = false"
 >
+    @if ($this->canAccessPlans())
     <div @click.away="open = false" class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl relative">
         <button @click="open = false" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
             <i class="fa-solid fa-xmark text-xl"></i>
@@ -302,8 +336,8 @@ new class extends Component
                     <span class="bg-emerald-500 text-white text-[10px] px-1.5 py-0.5 rounded font-extrabold uppercase">Save 20%</span>
                 </button>
             </div>
+            @endif
         </div>
-        @endif
 
         {{-- Pricing Cards Grid --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -438,4 +472,5 @@ new class extends Component
             </button>
         </div>
     </div>
+    @endif
 </div>

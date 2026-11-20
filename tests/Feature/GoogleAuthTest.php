@@ -56,15 +56,15 @@ it('creates and logs in a new user from Google', function () {
     $this->assertAuthenticatedAs($user);
 });
 
-it('returns to the selected plan after Google sign-in', function () {
+it('clears a selected paid plan for a new Google user', function () {
     mockGoogle(fakeGoogleUser('g-plan', 'plan@example.com'));
 
     $this->withSession(['pending_plan_selection' => ['tier' => 'pro', 'cycle' => 'annual']])
         ->get(route('auth.google.callback'))
-        ->assertRedirect(route('pricing'));
+        ->assertRedirect(route('home'));
 
     $this->assertAuthenticated();
-    expect(session('pending_plan_selection'))->toBe(['tier' => 'pro', 'cycle' => 'annual']);
+    expect(session()->has('pending_plan_selection'))->toBeFalse();
 });
 
 it('logs in an existing Google user without creating a duplicate', function () {

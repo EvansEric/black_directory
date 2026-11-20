@@ -5,6 +5,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Illuminate\Support\Facades\Auth;
 
 new
 #[Layout('layouts.app')]
@@ -15,6 +16,13 @@ class extends Component
     public function spotlightBusinesses()
     {
         return Business::query()->with('user.businesses')->where('is_verified', true)->spotlight()->latest()->take(3)->get();
+    }
+
+    public function canPromoteListing(): bool
+    {
+        $user = Auth::user();
+
+        return ! $user || \App\Services\SubscriptionGating::ownerHasVerifiedBusiness($user);
     }
 };
 
@@ -43,17 +51,19 @@ class extends Component
                 <p class="mx-auto max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base lg:text-lg">
                     Build wealth, foster community, and find extraordinary local dining, services, artisans, and professionals in your area.
                 </p>
-                @if (auth()->user()?->is_super_admin !== true)
-                <div class="mt-6 flex items-center justify-center gap-3">
-                    <button
-                        x-data
-                        @click="$dispatch('open-subscription-modal')"
-                        class="promote-listing-button flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 sm:w-auto sm:text-sm"
-                    >
-                        <i class="fa-solid fa-bolt"></i>
-                        <span>Promote Your Listing</span>
-                    </button>
-                </div>
+                @if (! auth()->check() || (! auth()->user()->is_admin && ! auth()->user()->is_super_admin))
+                    <div class="mt-6 flex items-center justify-center gap-3">
+                        @if ($this->canPromoteListing())
+                            <button
+                                x-data
+                                @click="$dispatch('open-subscription-modal')"
+                                class="promote-listing-button flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 sm:w-auto sm:text-sm"
+                            >
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Promote Your Listing</span>
+                            </button>
+                        @endif
+                    </div>
                 @endif
             </div>
         </div>

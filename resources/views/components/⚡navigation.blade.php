@@ -73,7 +73,7 @@ new class extends Component
             {{-- Mobile/Nav actions --}}
             <div class="flex items-center gap-2 sm:gap-3" x-data="{ userMenuOpen: false }">
                 <nav class="hidden md:flex items-center gap-6 text-sm font-medium" x-data>
-                    @if (! auth()->check() || ! auth()->user()->is_admin)
+                    @if (! auth()->check() || (! auth()->user()->is_admin && \App\Services\SubscriptionGating::ownerHasVerifiedBusiness(auth()->user())))
                         <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
                     @endif
                     <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>
@@ -131,7 +131,7 @@ new class extends Component
                                 $planEnding = $planBusiness ? \App\Services\SubscriptionGating::isEnding($planBusiness) : $planEnds !== null;
                             @endphp
                             @if (! auth()->user()->is_admin)
-                                <a href="{{ route('pricing') }}" class="flex items-center justify-between px-4 py-2 border-b border-slate-100 hover:bg-slate-50 transition" data-current-plan>
+                                <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100" data-current-plan>
                                     <span>
                                         <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Current plan</span>
                                         <span class="block text-xs font-bold text-amber-700">{{ $currentPlan['name'] }}</span>
@@ -148,8 +148,14 @@ new class extends Component
                                             </span>
                                         @endif
                                     </span>
-                                    <span class="text-[11px] font-semibold text-slate-500">{{ $currentPlan['key'] === 'free' ? 'Upgrade' : 'Manage' }} <i class="fa-solid fa-arrow-right text-[9px]"></i></span>
-                                </a>
+                                    @if (\App\Services\SubscriptionGating::ownerHasVerifiedBusiness(auth()->user()))
+                                        <a href="{{ route('pricing') }}" class="text-[11px] font-semibold text-slate-500 transition hover:text-slate-800">
+                                            {{ $currentPlan['key'] === 'free' ? 'Upgrade' : 'Manage' }} <i class="fa-solid fa-arrow-right text-[9px]"></i>
+                                        </a>
+                                    @else
+                                        <span class="text-[11px] text-slate-400">Pending verification</span>
+                                    @endif
+                                </div>
                             @endif
                             @if (auth()->user()->is_admin)
                                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition">
@@ -186,7 +192,7 @@ new class extends Component
         </div>
 
         <nav class="flex flex-wrap items-center justify-center gap-3 pb-3 text-xs font-medium md:hidden" x-data>
-            @if (! auth()->check() || ! auth()->user()->is_admin)
+            @if (! auth()->check() || (! auth()->user()->is_admin && \App\Services\SubscriptionGating::ownerHasVerifiedBusiness(auth()->user())))
                 <a href="{{ route('pricing') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
             @endif
             <a href="{{ route('mission') }}" class="text-slate-600 hover:text-slate-900 transition-colors">Mission</a>

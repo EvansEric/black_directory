@@ -26,16 +26,16 @@ it('drops the custom link for free users', function () {
     expect(Business::first()->website)->toBeNull();
 });
 
-it('saves the custom link on a new listing for a user with a paid plan', function () {
+it('does not save a custom link on a new unverified listing', function () {
     $user = User::factory()->create();
     $user->forceFill(['pending_stripe_session_id' => 'cs_test_paid', 'pending_plan_tier' => 'standard'])->save();
 
     websiteForm(Livewire::actingAs($user)->test('add-business-modal'))
-        ->assertSeeHtml('wire:model.blur="website"')
+        ->assertSee('Custom link is a Standard-tier feature')
         ->call('save')
         ->assertHasNoErrors();
 
-    expect(Business::first()->website)->toBe('https://linked.example.com');
+    expect(Business::first()->website)->toBeNull();
 });
 
 it('rejects non-http links', function () {
@@ -96,7 +96,7 @@ it('shows the masked link instead of the original website', function () {
         ->assertDontSeeHtml('https://real.example.com');
 });
 
-it('saves a custom slug for paid users and keeps slugs unique', function () {
+it('ignores custom links on new unverified listings', function () {
     slugBusiness();
     $user = User::factory()->create();
     $user->forceFill(['pending_stripe_session_id' => 'cs_test_paid', 'pending_plan_tier' => 'standard'])->save();
@@ -104,15 +104,10 @@ it('saves a custom slug for paid users and keeps slugs unique', function () {
     websiteForm(Livewire::actingAs($user)->test('add-business-modal'))
         ->set('customSlug', 'slug-shop')
         ->call('save')
-        ->assertHasErrors('customSlug')
-        ->set('customSlug', 'Bad Slug!')
-        ->call('save')
-        ->assertHasErrors('customSlug')
-        ->set('customSlug', 'linked-shop')
-        ->call('save')
         ->assertHasNoErrors();
 
-    expect(Business::where('name', 'Linked Shop')->first()->custom_slug)->toBe('linked-shop');
+    expect(Business::where('name', 'Linked Shop')->first()->custom_slug)->toBeNull()
+        ->and(Business::where('name', 'Linked Shop')->first()->website)->toBeNull();
 });
 
 it('ignores a custom slug for free users', function () {

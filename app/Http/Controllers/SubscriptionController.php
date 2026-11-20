@@ -16,6 +16,12 @@ class SubscriptionController extends Controller
      */
     public function pricing(): JsonResponse
     {
+        abort_unless(
+            ! request()->user() || SubscriptionGating::ownerHasVerifiedBusiness(request()->user()),
+            403,
+            'Verify a business listing before viewing paid plans.'
+        );
+
         return response()->json([
             'tiers' => array_intersect_key(SubscriptionGating::TIERS, array_flip([
                 SubscriptionGating::TIER_FREE,

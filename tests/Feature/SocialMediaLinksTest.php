@@ -8,7 +8,7 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-it('allows standard users to add and edit social media links', function () {
+it('requires verification before allowing Standard social media links', function () {
     $user = User::factory()->create();
     $user->forceFill([
         'pending_stripe_session_id' => 'cs_test_paid',
@@ -29,12 +29,17 @@ it('allows standard users to add and edit social media links', function () {
         ->assertHasNoErrors();
 
     $business = Business::query()->where('name', 'Social Shop')->firstOrFail();
-    expect($business->facebook_url)->toBe('https://facebook.com/socialshop')
-        ->and($business->instagram_url)->toBe('https://instagram.com/socialshop')
-        ->and($business->x_url)->toBe('https://x.com/socialshop')
-        ->and($business->tiktok_url)->toBe('https://tiktok.com/@socialshop');
+    expect($business->facebook_url)->toBeNull()
+        ->and($business->instagram_url)->toBeNull()
+        ->and($business->x_url)->toBeNull()
+        ->and($business->tiktok_url)->toBeNull();
 
-    $business->update(['subscription_tier' => 'standard', 'subscription_status' => 'active']);
+    $business->update([
+        'is_verified' => true,
+        'subscription_tier' => 'standard',
+        'subscription_status' => 'active',
+        'instagram_url' => 'https://instagram.com/socialshop',
+    ]);
     expect(SubscriptionGating::verifyFeature($business, 'social_links'))->toBeTrue();
     $component->call('editBusiness', $business->id)
         ->assertSet('instagramUrl', 'https://instagram.com/socialshop')

@@ -76,6 +76,10 @@ class BusinessSubscriptionManager
      */
     public function recordAccountCheckout(User $user, string $sessionId): bool
     {
+        if (! SubscriptionGating::ownerHasVerifiedBusiness($user)) {
+            return false;
+        }
+
         $session = $this->retrieveAccountSession($user, $sessionId);
 
         if ($session === null) {
@@ -132,6 +136,10 @@ class BusinessSubscriptionManager
      */
     public function claimPendingPlan(User $user, Business $business): bool
     {
+        if (! $business->is_verified || $business->user_id !== $user->getKey()) {
+            return false;
+        }
+
         $sessionId = $user->pending_stripe_session_id;
 
         if (blank($sessionId)) {
@@ -243,6 +251,17 @@ class BusinessSubscriptionManager
      */
     public function syncFromStripeSubscription(Business $business, array $subscription): void
     {
+        if (! $business->is_verified) {
+            $business->update([
+                'subscription_tier' => SubscriptionGating::TIER_FREE,
+                'subscription_status' => 'active',
+                'billing_cycle' => null,
+                'subscription_ends_at' => null,
+            ]);
+
+            return;
+        }
+
         $item = $subscription['items']['data'][0] ?? [];
         [$tier, $cycle] = $this->resolvePlan($item['price']['id'] ?? null)
             ?? [$subscription['metadata']['tier'] ?? null, $subscription['metadata']['billing_cycle'] ?? null];

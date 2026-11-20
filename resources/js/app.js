@@ -209,4 +209,123 @@ document.addEventListener('alpine:init', () => {
             );
         },
     }));
+
+    Alpine.data('addressAutocomplete', () => ({
+        suggestions: [],
+        open: false,
+        loading: false,
+        error: '',
+        activeIndex: -1,
+        sessionToken: crypto.randomUUID(),
+        timer: null,
+        requestId: 0,
+
+        search(value) {
+            this.$wire.clearAddressCoordinates();
+            clearTimeout(this.timer);
+            const input = value.trim();
+
+            if (input.length < 2) {
+                this.suggestions = [];
+                this.open = false;
+                return;
+            }
+
+            this.timer = setTimeout(() => this.loadSuggestions(input), 300);
+        },
+
+        async loadSuggestions(input) {
+            const requestId = ++this.requestId;
+            this.loading = true;
+            this.error = '';
+            this.open = true;
+            this.activeIndex = -1;
+
+            try {
+                const query = new URLSearchParams({
+                    input,
+                    session_token: this.sessionToken,
+                });
+                const response = await fetch(`${this.$root.dataset.autocompleteUrl}?${query}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(payload.message || 'Address autocomplete is unavailable.');
+                }
+
+                if (requestId === this.requestId) {
+                    this.suggestions = payload.suggestions ?? [];
+                }
+            } catch (error) {
+                if (requestId === this.requestId) {
+                    this.suggestions = [];
+                    this.error = error.message;
+                }
+            } finally {
+                if (requestId === this.requestId) {
+                    this.loading = false;
+                }
+            }
+        },
+
+        async select(suggestion) {
+            this.loading = true;
+            this.error = '';
+            const sessionToken = this.sessionToken;
+
+            try {
+                const url = this.$root.dataset.detailsUrl.replace('__PLACE__', encodeURIComponent(suggestion.place_id));
+                const response = await fetch(`${url}?${new URLSearchParams({ session_token: sessionToken })}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const place = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(place.message || 'We could not load that address.');
+                }
+
+                this.$wire.setAddressFromAutocomplete(
+                    place.address,
+                    place.city,
+                    place.state,
+                    place.zip,
+                    place.latitude,
+                    place.longitude,
+                );
+                this.$refs.address.value = place.address;
+                this.sessionToken = crypto.randomUUID();
+                this.close();
+            } catch (error) {
+                this.open = true;
+                this.error = error.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        move(offset) {
+            if (!this.open || this.suggestions.length === 0) {
+                return;
+            }
+
+            this.activeIndex = (this.activeIndex + offset + this.suggestions.length) % this.suggestions.length;
+        },
+
+        chooseActive() {
+            if (this.activeIndex >= 0) {
+                this.select(this.suggestions[this.activeIndex]);
+            }
+        },
+
+        close() {
+            this.open = false;
+            this.activeIndex = -1;
+        },
+
+        closeAfterDelay() {
+            setTimeout(() => this.close(), 100);
+        },
+    }));
 });

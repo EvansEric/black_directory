@@ -6,6 +6,7 @@ use App\Http\Controllers\BusinessLinkController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\PlacesAutocompleteController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
@@ -31,6 +32,10 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/places/autocomplete', [PlacesAutocompleteController::class, 'index'])
+        ->middleware('throttle:60,1')->name('places.autocomplete');
+    Route::get('/places/{place}', [PlacesAutocompleteController::class, 'show'])
+        ->middleware('throttle:60,1')->name('places.show');
     Route::get('/businesses/{business}/reviews/create', [ReviewController::class, 'create'])->name('reviews.create');
     Route::post('/businesses/{business}/review-verifications', [ReviewController::class, 'requestVerification'])
         ->middleware('throttle:5,60')->name('reviews.verify');

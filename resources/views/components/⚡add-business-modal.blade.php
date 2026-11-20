@@ -34,6 +34,8 @@ new class extends Component
     public array $insuranceTypes = [];
     public $image;
     public string $description = '';
+    public ?float $latitude = null;
+    public ?float $longitude = null;
     public ?int $editingBusinessId = null;
 
     protected function rules(): array
@@ -235,12 +237,37 @@ new class extends Component
         $this->description = $business->has_rich_description && ! SubscriptionGating::canAccessDescription($business)
             ? app(BusinessDescription::class)->plainText($business)
             : $business->description;
+        $this->latitude = $business->latitude;
+        $this->longitude = $business->longitude;
         $this->resetValidation();
+    }
+
+    public function setAddressFromAutocomplete(
+        string $address,
+        string $city,
+        string $state,
+        string $zip,
+        ?float $latitude = null,
+        ?float $longitude = null,
+    ): void {
+        $this->address = mb_substr(trim($address), 0, 255);
+        $this->city = mb_substr(trim($city), 0, 100);
+        $this->state = strtoupper(mb_substr(trim($state), 0, 2));
+        $this->zip = mb_substr(trim($zip), 0, 20);
+        $this->latitude = $latitude !== null && $latitude >= -90 && $latitude <= 90 ? $latitude : null;
+        $this->longitude = $longitude !== null && $longitude >= -180 && $longitude <= 180 ? $longitude : null;
+        $this->resetValidation(['address', 'city', 'state', 'zip']);
+    }
+
+    public function clearAddressCoordinates(): void
+    {
+        $this->latitude = null;
+        $this->longitude = null;
     }
 
     private function resetForm(): void
     {
-        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'facebookUrl', 'instagramUrl', 'xUrl', 'tiktokUrl', 'customSlug', 'tags', 'freeParking', 'insuranceTypes', 'image', 'description', 'editingBusinessId']);
+        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'facebookUrl', 'instagramUrl', 'xUrl', 'tiktokUrl', 'customSlug', 'tags', 'freeParking', 'insuranceTypes', 'image', 'description', 'latitude', 'longitude', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
     }
@@ -261,6 +288,10 @@ new class extends Component
 
         if ($unchanged) {
             return [];
+        }
+
+        if ($this->latitude !== null && $this->longitude !== null) {
+            return ['latitude' => $this->latitude, 'longitude' => $this->longitude];
         }
 
         $found = app(Geocoder::class)->geocodeListingAddress(
@@ -534,10 +565,49 @@ new class extends Component
                 </div>
             </div>
 
-            <div>
+            <div
+                x-data="addressAutocomplete"
+                data-address-autocomplete
+                data-autocomplete-url="{{ route('places.autocomplete') }}"
+                data-details-url="{{ route('places.show', ['place' => '__PLACE__']) }}"
+                class="relative"
+            >
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Street Address</label>
-                <input type="text" wire:model="address" placeholder="e.g. 123 Main St"
+                <input x-ref="address" type="text" wire:model="address" @input.debounce.300ms="clearCoordinates()" placeholder="Start typing a street address"
+                       autocomplete="street-address" aria-describedby="address-autocomplete-help"
+                       @input="search($event.target.value)"
+                       @keydown.down.prevent="move(1)"
+                       @keydown.up.prevent="move(-1)"
+                       @keydown.enter.prevent="chooseActive()"
+                       @keydown.escape.prevent="close()"
+                       @blur="closeAfterDelay()"
                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <p id="address-autocomplete-help" class="mt-1 text-xs text-slate-500">Select a suggested address to fill in the location details.</p>
+                <div
+                    x-show="open"
+                    x-cloak
+                    class="absolute z-[1100] mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                    role="listbox"
+                >
+                    <template x-for="(suggestion, index) in suggestions" :key="suggestion.place_id">
+                        <button
+                            type="button"
+                            @mousedown.prevent
+                            @click="select(suggestion)"
+                            :class="index === activeIndex ? 'bg-amber-50' : 'bg-white'"
+                            class="block w-full border-b border-slate-100 px-3.5 py-2.5 text-left text-sm last:border-b-0 hover:bg-amber-50"
+                            role="option"
+                            :aria-selected="index === activeIndex"
+                        >
+                            <span class="block font-semibold text-slate-800" x-text="suggestion.main_text || suggestion.description"></span>
+                            <span class="block text-xs text-slate-500" x-text="suggestion.secondary_text"></span>
+                        </button>
+                    </template>
+                    <p x-show="loading" class="px-3.5 py-3 text-xs text-slate-500">Searching addresses...</p>
+                    <p x-show="error" class="px-3.5 py-3 text-xs font-semibold text-red-600" x-text="error" role="alert"></p>
+                    <p x-show="!loading && !error && suggestions.length === 0" class="px-3.5 py-3 text-xs text-slate-500">No addresses found.</p>
+                    <p class="border-t border-slate-100 px-3.5 py-2 text-right text-[10px] font-semibold text-slate-400">Powered by Google</p>
+                </div>
                 @error('address') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 

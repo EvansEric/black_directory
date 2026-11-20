@@ -2,6 +2,7 @@
 
 use App\Models\Business;
 use App\Models\User;
+use App\Services\Geocoder;
 use Livewire\Livewire;
 
 function businessFor(User $user, array $attributes = []): Business
@@ -77,6 +78,61 @@ it('allows insurance businesses to be listed and filtered by category', function
         ->call('selectCategory', 'Insurance')
         ->assertSee('Neighborhood Insurance')
         ->assertDontSee('Original Business');
+});
+
+it('applies an autocomplete address and saves its coordinates without geocoding', function () {
+    $owner = User::factory()->create();
+    $geocoder = $this->mock(Geocoder::class);
+    $geocoder->shouldNotReceive('geocodeListingAddress');
+
+    Livewire::actingAs($owner)
+        ->test('add-business-modal')
+        ->assertSee('data-address-autocomplete', false)
+        ->set('name', 'Autocomplete Shop')
+        ->set('category', 'Retail & Fashion')
+        ->set('description', 'A nearby shop.')
+        ->call('setAddressFromAutocomplete', '123 Peachtree St NE', 'Atlanta', 'GA', '30303', 33.755, -84.390)
+        ->assertSet('address', '123 Peachtree St NE')
+        ->assertSet('city', 'Atlanta')
+        ->assertSet('state', 'GA')
+        ->assertSet('zip', '30303')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Business::where('name', 'Autocomplete Shop')->firstOrFail())
+        ->address->toBe('123 Peachtree St NE')
+        ->latitude->toBe(33.755)
+        ->longitude->toBe(-84.39);
+});
+
+it('uses the existing address autocomplete flow while editing a listing', function () {
+    $owner = User::factory()->create();
+    $business = businessFor($owner);
+
+    Livewire::actingAs($owner)
+        ->test('add-business-modal')
+        ->call('editBusiness', $business->id)
+        ->call('setAddressFromAutocomplete', '456 Decatur St', 'Decatur', 'ga', '30030', 33.7748, -84.2963)
+        ->assertSet('address', '456 Decatur St')
+        ->assertSet('city', 'Decatur')
+        ->assertSet('state', 'GA')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($business->fresh())
+        ->address->toBe('456 Decatur St')
+        ->location->toBe('Decatur, GA')
+        ->zip->toBe('30030');
+});
+
+it('exposes address autocomplete endpoints without exposing the Google key', function () {
+    config()->set('services.google_maps.key', 'browser-key');
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('home'))
+        ->assertOk()
+        ->assertSee(route('places.autocomplete'), false)
+        ->assertDontSee('browser-key', false);
 });
 
 it('forbids a non-owner from opening the edit form', function () {

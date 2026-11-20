@@ -117,6 +117,8 @@ new class extends Component
             $query->nearby($center['latitude'], $center['longitude'], $this->radius());
         }
 
+        $query->withCount('reviews')->withAvg('reviews', 'rating');
+
         if ($center && ($this->sortVal === 'nearest' || ($this->zipIsCenter() && $this->sortVal === 'featured'))) {
             $query->orderedByDistance();
 
@@ -501,7 +503,7 @@ new class extends Component
                                 <h3 class="font-bold text-slate-900 text-base group-hover:text-amber-600 transition-colors line-clamp-1">{{ $business->name }}</h3>
                                 <div class="flex items-center space-x-1 bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md text-xs font-bold shrink-0">
                                     <i class="fa-solid fa-star text-amber-500 text-[10px]"></i>
-                                    <span>{{ $business->rating }}</span>
+                                    <span>{{ $business->reviews_count ? number_format($business->reviews_avg_rating, 1) . ' (' . $business->reviews_count . ')' : 'Not yet rated' }}</span>
                                 </div>
                             </div>
 

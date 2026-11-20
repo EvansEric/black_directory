@@ -82,6 +82,10 @@ class extends Component
                 <p class="text-sm leading-relaxed text-slate-600 sm:text-base">
                     Choose the plan that fits your business. Upgrade anytime to unlock more visibility, branding, and lead generation tools.
                 </p>
+                <p class="mt-4 text-sm text-slate-600">
+                    Paid plans require a verified listing and renew until canceled.
+                    <a href="{{ route('listing-disclosure') }}" class="font-semibold text-amber-700 underline hover:text-amber-600">Read the listing and subscription disclosure</a>.
+                </p>
             </div>
         </section>
 

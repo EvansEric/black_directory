@@ -49,8 +49,6 @@ class BusinessSeeder extends Seeder
                 'phone' => fake()->phoneNumber(),
                 'website' => fake()->url(),
                 'description' => fake()->paragraph(),
-                'rating' => fake()->randomFloat(1, 3.5, 5),
-                'reviews_count' => fake()->numberBetween(0, 250),
                 'featured' => $index <= 2,
                 'tags' => fake()->words(3),
             ]);

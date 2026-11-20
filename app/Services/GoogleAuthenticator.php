@@ -20,15 +20,14 @@ class GoogleAuthenticator
         }
 
         $email = (string) $google->getEmail();
+        if (! $this->emailIsVerified($google)) {
+            throw new \DomainException('Your Google email address is not verified.');
+        }
+
         $user = User::query()->where('email', $email)->first();
 
         if ($user) {
-            // Only link an existing password account when Google vouches for the email.
-            if (! $this->emailIsVerified($google)) {
-                throw new \DomainException('Your Google email address is not verified.');
-            }
-
-            $user->forceFill(['google_id' => $google->getId()])->save();
+            $user->forceFill(['google_id' => $google->getId(), 'email_verified_at' => $user->email_verified_at ?? now()])->save();
 
             return $user;
         }

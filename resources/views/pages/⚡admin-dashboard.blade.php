@@ -364,6 +364,9 @@ class extends Component
                 >
                     <i class="fa-solid fa-users-gear mr-2"></i> User Management
                 </button>
+                <a href="{{ route('admin.review-verifications.index') }}" class="block w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100">
+                    <i class="fa-solid fa-receipt mr-2"></i> Review Verification
+                </a>
             </nav>
         </aside>
 
@@ -373,6 +376,7 @@ class extends Component
                 {{-- Header --}}
                 <div class="mb-8">
                     <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Admin Panel</p>
+                    <a href="{{ route('admin.review-verifications.index') }}" class="mt-2 inline-block text-sm font-semibold text-amber-700 hover:underline lg:hidden">Review Verification</a>
                     <div class="mt-2 flex items-center justify-between">
                         <h1 class="font-serif text-3xl font-bold text-slate-900">
                             @if ($section === 'analytics') Analytics Dashboard @elseif ($section === 'businesses') Business Verification @else User Management @endif

@@ -420,6 +420,10 @@ new class extends Component
                     <span class="block mb-1 font-semibold text-red-700" role="alert">{{ $message }}</span>
                 @enderror
                 <span>{{ $selectedTier === 'free' ? 'No payment required for the Free plan.' : 'Secure payment powered by Stripe. Pay with card, Apple Pay, Google Pay, or Link. Cancel anytime.' }}</span>
+                @if ($selectedTier !== 'free')
+                    <span class="mt-1 block">Paid plans require a verified listing and renew on the selected billing cycle until canceled.</span>
+                @endif
+                <a href="{{ route('listing-disclosure') }}" target="_blank" rel="noopener noreferrer" class="mt-1 inline-block font-semibold text-amber-700 underline hover:text-amber-600">Listing and subscription disclosure</a>
             </div>
 
             <button

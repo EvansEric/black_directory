@@ -26,6 +26,11 @@
                         Pricing & Listing Plans
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('listing-disclosure') }}" class="transition hover:text-slate-950">
+                        Listing & Subscription Disclosure
+                    </a>
+                </li>
             </ul>
         </div>
     </div>

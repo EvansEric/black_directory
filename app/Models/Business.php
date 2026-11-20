@@ -84,6 +84,18 @@ class Business extends Model
         'subscription_ends_at' => 'datetime',
     ];
 
+    /** @return HasMany<BusinessReview, $this> */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(BusinessReview::class);
+    }
+
+    /** @return HasMany<ReviewVerification, $this> */
+    public function reviewVerifications(): HasMany
+    {
+        return $this->hasMany(ReviewVerification::class);
+    }
+
     // CamelCase accessors to fulfill API requirements ($business->subscriptionTier, etc.)
     public function getSubscriptionTierAttribute(): string
     {
@@ -288,6 +300,14 @@ class Business extends Model
             return $query->orderBy('name');
         }
 
+        if ($secondarySort === 'rating') {
+            // A five-review prior at 3.5 stars reduces the impact of a single rating.
+            return $query
+                ->orderByRaw('(SELECT COUNT(*) FROM business_reviews WHERE business_reviews.business_id = businesses.id) = 0')
+                ->orderByRaw('(SELECT (COALESCE(SUM(rating), 0) + 17.5) / (COUNT(*) + 5.0) FROM business_reviews WHERE business_reviews.business_id = businesses.id) DESC')
+                ->orderByDesc('created_at');
+        }
+
         $now = now()->toDateTimeString();
 
         $query->orderByRaw("
@@ -302,10 +322,7 @@ class Business extends Model
             END DESC
         ", [$now, $now, $now]);
 
-        return match ($secondarySort) {
-            'rating' => $query->orderByDesc('rating')->orderByDesc('created_at'),
-            default => $query->orderByDesc('featured')->orderByDesc('created_at'),
-        };
+        return $query->orderByDesc('featured')->orderByDesc('created_at');
     }
 
     /**

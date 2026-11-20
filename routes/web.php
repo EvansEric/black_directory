@@ -1,23 +1,53 @@
 <?php
 
 use App\Http\Controllers\Admin\BusinessVerificationController;
+use App\Http\Controllers\Admin\ReviewVerificationController;
 use App\Http\Controllers\BusinessLinkController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::livewire('/', 'pages::home')->name('home');
 Route::livewire('/pricing', 'pages::pricing')->name('pricing');
 Route::livewire('/mission', 'pages::mission')->name('mission');
+Route::livewire('/listing-disclosure', 'pages::listing-disclosure')->name('listing-disclosure');
+Route::redirect('/login', '/')->name('login');
 Route::get('/b/{slug}', BusinessLinkController::class)->where('slug', '[a-z0-9-]+')->name('business.link');
+Route::get('/businesses/{business}/reviews', [ReviewController::class, 'index'])->name('reviews.index');
 
 Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::livewire('/dashboard', 'pages::admin-dashboard')->name('dashboard');
     Route::get('/businesses', [BusinessVerificationController::class, 'index'])->name('businesses.index');
     Route::patch('/businesses/{business}/verification', [BusinessVerificationController::class, 'update'])->name('businesses.verification');
+    Route::get('/review-verifications', [ReviewVerificationController::class, 'index'])->name('review-verifications.index');
+    Route::get('/review-verifications/{verification}/evidence', [ReviewVerificationController::class, 'evidence'])->name('review-verifications.evidence');
+    Route::post('/review-verifications/{verification}', [ReviewVerificationController::class, 'decide'])->name('review-verifications.decide');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/businesses/{business}/reviews/create', [ReviewController::class, 'create'])->name('reviews.create');
+    Route::post('/businesses/{business}/review-verifications', [ReviewController::class, 'requestVerification'])
+        ->middleware('throttle:5,60')->name('reviews.verify');
+    Route::post('/businesses/{business}/reviews', [ReviewController::class, 'store'])
+        ->middleware('throttle:10,60')->name('reviews.store');
+    Route::post('/email/verification-notification', function (Request $request) {
+        if (! $request->user()->hasVerifiedEmail()) {
+            $request->user()->sendEmailVerificationNotification();
+        }
+
+        return back()->with('status', 'If your email is not verified, a verification link has been sent.');
+    })->middleware('throttle:3,60')->name('verification.send');
+    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+        $request->fulfill();
+
+        return redirect()->route('home')->with('status', 'Your email address has been verified.');
+    })->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
 });
 
 // Subscription Routes

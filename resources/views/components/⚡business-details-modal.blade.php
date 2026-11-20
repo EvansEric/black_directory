@@ -67,10 +67,8 @@ new class extends Component
                         <h3 class="font-serif text-2xl font-bold text-slate-900">{{ $business->name }}</h3>
                         <div class="mt-1 flex items-center gap-1 text-xs font-bold text-amber-800">
                             <i class="fa-solid fa-star text-[10px] text-amber-500"></i>
-                            <span>{{ $business->rating }}</span>
-                            @if ($business->reviews_count)
-                                <span class="font-medium text-slate-500">({{ $business->reviews_count }} reviews)</span>
-                            @endif
+                            @php $reviewCount = $business->reviews()->count(); @endphp
+                            <span>{{ $reviewCount ? number_format($business->reviews()->avg('rating'), 1) . ' (' . $reviewCount . ' verified reviews)' : 'Not yet rated' }}</span>
                         </div>
                     </div>
 
@@ -141,6 +139,28 @@ new class extends Component
                             @endforeach
                         </div>
                     @endif
+
+                    <div class="border-t border-slate-200 pt-4">
+                        <h4 class="text-sm font-bold text-slate-900">Verified customer reviews</h4>
+                        @forelse ($business->reviews()->with('user')->latest()->limit(5)->get() as $review)
+                            <div class="mt-3 text-xs text-slate-600">
+                                <p class="font-semibold text-slate-900">{{ $review->user->name }} &middot; {{ $review->rating }}/5</p>
+                                @if ($review->comment)<p class="mt-1 whitespace-pre-line">{{ $review->comment }}</p>@endif
+                            </div>
+                        @empty
+                            <p class="mt-2 text-xs text-slate-500">No verified reviews yet.</p>
+                        @endforelse
+                        @if ($reviewCount > 5)
+                            <a href="{{ route('reviews.index', $business) }}" class="mt-3 block text-xs font-bold text-amber-700 hover:underline">See all verified reviews</a>
+                        @endif
+                        @if ($business->is_verified && auth()->id() !== $business->user_id)
+                            @auth
+                                <a href="{{ route('reviews.create', $business) }}" class="mt-3 inline-block text-xs font-bold text-amber-700 hover:underline">Request verification or write a review</a>
+                            @else
+                                <button type="button" @click="open = false; $wire.close(); $dispatch('open-auth-modal', { tab: 'login' })" class="mt-3 text-xs font-bold text-amber-700 hover:underline">Log in to request a review</button>
+                            @endauth
+                        @endif
+                    </div>
 
                     <div class="mt-auto flex flex-wrap gap-2 pt-2">
                         <a

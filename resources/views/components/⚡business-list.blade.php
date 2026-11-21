@@ -424,7 +424,7 @@ new class extends Component
                     class="cursor-pointer bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
                 >
                     <div class="relative h-40 overflow-hidden bg-slate-100">
-                        <img src="{{ ($business->canAccessLogo() && $business->image) ? asset('storage/' . $business->image) : 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80' }}"
+                        <img src="{{ ($business->canAccessLogo() && $business->image) ? asset('storage/' . $business->image) : asset('images/default_image_for_businesses.jpeg') }}"
                             alt="{{ $business->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                         <div class="absolute inset-0 bg-linear-to-t from-slate-900/60 via-transparent to-transparent"></div>
 
@@ -537,6 +537,25 @@ new class extends Component
                                     <i class="fa-solid fa-globe"></i>
                                     <span>Visit Website</span>
                                 </a>
+                            @endif
+
+                            @if ($socialLinks = $business->availableSocialLinks())
+                                <div class="mb-4 flex flex-wrap gap-2" data-listing-social-links>
+                                    @foreach ($socialLinks as $label => $link)
+                                        <a
+                                            href="{{ $link['url'] }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            @click.stop
+                                            aria-label="{{ $business->name }} on {{ $label }}"
+                                            title="{{ $label }}"
+                                            class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-600 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
+                                        >
+                                            <i class="{{ $link['icon'] }}"></i>
+                                            <span>{{ $label }}</span>
+                                        </a>
+                                    @endforeach
+                                </div>
                             @endif
 
                             @if ($business->address)

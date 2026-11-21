@@ -80,6 +80,8 @@ it('shows social links on profiles only when the listing has Standard access', f
         'description' => 'A local shop.',
         'facebook_url' => 'https://facebook.com/socialprofile',
         'instagram_url' => 'https://instagram.com/socialprofile',
+        'x_url' => 'https://x.com/socialprofile',
+        'tiktok_url' => 'https://tiktok.com/@socialprofile',
     ];
     $standard = Business::create([
         ...$attributes,
@@ -96,10 +98,38 @@ it('shows social links on profiles only when the listing has Standard access', f
         ->call('open', $standard->id)
         ->assertSeeHtml('data-social-links')
         ->assertSeeHtml('href="https://facebook.com/socialprofile"')
+        ->assertSeeHtml('href="https://instagram.com/socialprofile"')
+        ->assertSeeHtml('href="https://x.com/socialprofile"')
+        ->assertSeeHtml('href="https://tiktok.com/@socialprofile"')
         ->call('close')
         ->call('open', $free->id)
         ->assertDontSeeHtml('data-social-links')
         ->assertDontSeeHtml('https://facebook.com/socialprofile');
+});
+
+it('shows every added social link directly on a business listing card', function () {
+    $business = Business::create([
+        'is_verified' => true,
+        'user_id' => User::factory()->create()->id,
+        'name' => 'Connected Shop',
+        'category' => 'Retail & Fashion',
+        'location' => 'Atlanta, GA',
+        'description' => 'A connected shop.',
+        'subscription_tier' => 'standard',
+        'subscription_status' => 'active',
+        'facebook_url' => 'https://facebook.com/connected',
+        'instagram_url' => 'https://instagram.com/connected',
+        'x_url' => 'https://x.com/connected',
+        'tiktok_url' => 'https://tiktok.com/@connected',
+    ]);
+
+    Livewire::test('business-list')
+        ->assertSeeHtml('data-listing-social-links')
+        ->assertSeeHtml('href="https://facebook.com/connected"')
+        ->assertSeeHtml('href="https://instagram.com/connected"')
+        ->assertSeeHtml('href="https://x.com/connected"')
+        ->assertSeeHtml('href="https://tiktok.com/@connected"')
+        ->assertSee('aria-label="'.$business->name.' on Facebook"', false);
 });
 
 it('rejects social links that are not valid HTTP URLs', function () {

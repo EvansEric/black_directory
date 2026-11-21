@@ -190,6 +190,25 @@ class Business extends Model
         return SubscriptionGating::canAccessSocialLinks($this);
     }
 
+    /**
+     * @return array<string, array{url: string, icon: string}>
+     */
+    public function availableSocialLinks(): array
+    {
+        if (! $this->canAccessSocialLinks()) {
+            return [];
+        }
+
+        return collect([
+            'Facebook' => ['url' => $this->facebook_url, 'icon' => 'fa-brands fa-facebook'],
+            'Instagram' => ['url' => $this->instagram_url, 'icon' => 'fa-brands fa-instagram'],
+            'X' => ['url' => $this->x_url, 'icon' => 'fa-brands fa-x-twitter'],
+            'TikTok' => ['url' => $this->tiktok_url, 'icon' => 'fa-brands fa-tiktok'],
+        ])
+            ->filter(fn (array $link): bool => filled($link['url']))
+            ->all();
+    }
+
     public function canAccessDescription(): bool
     {
         if ($this->user?->is_admin) {

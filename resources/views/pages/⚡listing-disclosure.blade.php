@@ -41,8 +41,8 @@ class extends Component {};
 
                 <section>
                     <h2 class="mb-2 text-lg font-bold text-slate-900">Cancellation and verification changes</h2>
-                    <p>You can manage or cancel a subscription by selecting the Free plan. When a paid subscription is canceled, the paid plan generally continues through the end of the current billing period.</p>
-                    <p class="mt-3">Removing a listing's verification hides the listing but does not automatically cancel an existing subscription.</p>
+                    <p>You can manage or cancel a subscription by selecting the Free plan. When a paid subscription is canceled the paid plan cancels immediately, but access continues until the end of the current billing period.</p>
+                    <p class="mt-3">Removing a listing cancels an existing subscription.</p>
                 </section>
             </div>
         </section>

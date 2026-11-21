@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\BusinessVerificationController;
-use App\Http\Controllers\Admin\ReviewVerificationController;
 use App\Http\Controllers\BusinessLinkController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\LeadController;
@@ -26,9 +25,6 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::livewire('/dashboard', 'pages::admin-dashboard')->name('dashboard');
     Route::get('/businesses', [BusinessVerificationController::class, 'index'])->name('businesses.index');
     Route::patch('/businesses/{business}/verification', [BusinessVerificationController::class, 'update'])->name('businesses.verification');
-    Route::get('/review-verifications', [ReviewVerificationController::class, 'index'])->name('review-verifications.index');
-    Route::get('/review-verifications/{verification}/evidence', [ReviewVerificationController::class, 'evidence'])->name('review-verifications.evidence');
-    Route::post('/review-verifications/{verification}', [ReviewVerificationController::class, 'decide'])->name('review-verifications.decide');
 });
 
 Route::middleware('auth')->group(function () {
@@ -36,11 +32,6 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:60,1')->name('places.autocomplete');
     Route::get('/places/{place}', [PlacesAutocompleteController::class, 'show'])
         ->middleware('throttle:60,1')->name('places.show');
-    Route::get('/businesses/{business}/reviews/create', [ReviewController::class, 'create'])->name('reviews.create');
-    Route::post('/businesses/{business}/review-verifications', [ReviewController::class, 'requestVerification'])
-        ->middleware('throttle:5,60')->name('reviews.verify');
-    Route::post('/businesses/{business}/reviews', [ReviewController::class, 'store'])
-        ->middleware('throttle:10,60')->name('reviews.store');
     Route::post('/email/verification-notification', function (Request $request) {
         if (! $request->user()->hasVerifiedEmail()) {
             $request->user()->sendEmailVerificationNotification();

@@ -143,13 +143,6 @@ new class extends Component
                         @if ($reviewCount > 5)
                             <a href="{{ route('reviews.index', $business) }}" class="mt-3 block text-xs font-bold text-amber-700 hover:underline">See all verified reviews</a>
                         @endif
-                        @if ($business->is_verified && auth()->id() !== $business->user_id)
-                            @auth
-                                <a href="{{ route('reviews.create', $business) }}" class="mt-3 inline-block text-xs font-bold text-amber-700 hover:underline">Request verification or write a review</a>
-                            @else
-                                <button type="button" @click="open = false; $wire.close(); $dispatch('open-auth-modal', { tab: 'login' })" class="mt-3 text-xs font-bold text-amber-700 hover:underline">Log in to request a review</button>
-                            @endauth
-                        @endif
                     </div>
 
                     <div class="mt-auto flex flex-wrap gap-2 pt-2">

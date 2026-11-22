@@ -2,14 +2,19 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new class extends Component
 {
+    use WithFileUploads;
+
     #[Url(as: 'saved')]
     public bool $savedActive = false;
+    public $avatarUpload;
 
     public function savedCount(): int
     {
@@ -49,6 +54,40 @@ new class extends Component
         Session::regenerateToken();
 
         $this->redirect('/');
+    }
+
+    public function updatedAvatarUpload(): void
+    {
+        $user = Auth::user();
+        abort_unless($user && ! $user->is_admin, 403);
+
+        $this->validate([
+            'avatarUpload' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $path = $this->avatarUpload->store('avatars', 'public');
+        $previousAvatar = $user->avatar;
+
+        $user->forceFill(['avatar' => $path])->save();
+
+        if ($previousAvatar && ! str_starts_with($previousAvatar, 'http')) {
+            Storage::disk('public')->delete($previousAvatar);
+        }
+
+        $this->reset('avatarUpload');
+        $user->refresh();
+    }
+
+    public function removeAvatar(): void
+    {
+        $user = Auth::user();
+        abort_unless($user && ! $user->is_admin, 403);
+
+        if ($user->avatar && ! str_starts_with($user->avatar, 'http')) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $user->forceFill(['avatar' => null])->save();
     }
 }; ?>
 
@@ -109,8 +148,12 @@ new class extends Component
 
                 @auth
                     <div class="relative">
-                        <button @click="userMenuOpen = !userMenuOpen" class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-slate-900 transition hover:bg-amber-400 sm:h-10 sm:w-10">
-                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        <button @click="userMenuOpen = !userMenuOpen" class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-sm font-bold text-slate-900 transition hover:bg-amber-400 sm:h-10 sm:w-10">
+                            @if (auth()->user()->avatar)
+                                <img src="{{ asset('storage/'.auth()->user()->avatar) }}" alt="{{ auth()->user()->name }} avatar" class="h-full w-full object-cover">
+                            @else
+                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            @endif
                         </button>
 
                         <div
@@ -131,6 +174,38 @@ new class extends Component
                                 $planEnding = $planBusiness ? \App\Services\SubscriptionGating::isEnding($planBusiness) : $planEnds !== null;
                             @endphp
                             @if (! auth()->user()->is_admin)
+                                <a href="{{ route('profile') }}" class="block border-b border-slate-100 px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+                                    <i class="fa-solid fa-store mr-2"></i> Business Profile
+                                </a>
+                                <div class="border-b border-slate-100 px-4 py-3" data-avatar-control>
+                                    <label class="mb-2 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Profile avatar</label>
+                                    <div class="flex items-center gap-2">
+                                        <label for="avatar-upload-{{ auth()->id() }}" class="min-w-0 flex-1 cursor-pointer rounded-lg bg-slate-100 px-3 py-1.5 text-center text-[11px] font-bold text-slate-700 transition hover:bg-slate-200">
+                                            <i class="fa-solid fa-camera mr-1"></i>{{ auth()->user()->avatar ? 'Change avatar' : 'Add avatar' }}
+                                        </label>
+                                        <input
+                                            id="avatar-upload-{{ auth()->id() }}"
+                                            wire:model.live="avatarUpload"
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            class="sr-only"
+                                            aria-label="Upload profile avatar"
+                                        >
+                                        @if (auth()->user()->avatar)
+                                            <button
+                                                type="button"
+                                                wire:click="removeAvatar"
+                                                class="rounded-lg px-2 py-1.5 text-[11px] font-bold text-red-600 transition hover:bg-red-50"
+                                            >
+                                                Remove
+                                            </button>
+                                        @endif
+                                    </div>
+                                    <p class="mt-2 text-[10px] text-slate-400">JPG, PNG or WebP. Maximum 2 MB.</p>
+                                    @error('avatarUpload')
+                                        <p class="mt-1 text-[10px] font-semibold text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
                                 <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100" data-current-plan>
                                     <span>
                                         <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Current plan</span>

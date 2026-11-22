@@ -28,6 +28,7 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::livewire('/profile', 'pages::profile')->name('profile');
     Route::get('/places/autocomplete', [PlacesAutocompleteController::class, 'index'])
         ->middleware('throttle:60,1')->name('places.autocomplete');
     Route::get('/places/{place}', [PlacesAutocompleteController::class, 'show'])

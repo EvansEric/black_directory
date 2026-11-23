@@ -268,8 +268,10 @@ class BusinessSubscriptionManager
 
         $data = ['subscription_status' => ($subscription['cancel_at_period_end'] ?? false) ? 'canceled' : ($subscription['status'] ?? 'active')];
 
-        if ($tier) {
+        if (isset(SubscriptionGating::TIERS[$tier])) {
             $data['subscription_tier'] = $tier;
+        } else {
+            $data['subscription_tier'] = SubscriptionGating::TIER_FREE;
         }
 
         if ($cycle) {

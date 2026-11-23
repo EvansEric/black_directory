@@ -14,14 +14,11 @@ class SubscriptionGating
 
     public const TIER_PRO = 'pro';
 
-    public const TIER_SPOTLIGHT = 'spotlight';
-
     /** Maximum businesses an owner may list, by their highest active tier (null = unlimited). */
     public const BUSINESS_LIMITS = [
         self::TIER_FREE => 1,
         self::TIER_STANDARD => 1,
         self::TIER_PRO => 5,
-        self::TIER_SPOTLIGHT => null,
     ];
 
     public const TIERS = [
@@ -52,16 +49,6 @@ class SubscriptionGating
             'stripe_annual_price_id' => 'price_pro_annual',
             'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Lead Generation Forms', 'All Standard Features'],
             'priority' => 2,
-        ],
-        self::TIER_SPOTLIGHT => [
-            'key' => self::TIER_SPOTLIGHT,
-            'name' => 'Homepage Spotlight',
-            'monthly_price' => 39.98,
-            'annual_price' => 383.80,
-            'stripe_monthly_price_id' => 'price_spotlight_monthly',
-            'stripe_annual_price_id' => 'price_spotlight_annual',
-            'features' => ['Unlimited Business Listings', 'Top Banner & Homepage Rotation Slots', 'Everything in Pro'],
-            'priority' => 3,
         ],
     ];
 
@@ -109,7 +96,7 @@ class SubscriptionGating
             $rawTier = self::TIER_STANDARD;
         }
 
-        if ($rawTier === self::TIER_FREE) {
+        if (! isset(self::TIERS[$rawTier]) || $rawTier === self::TIER_FREE) {
             return self::TIER_FREE;
         }
 
@@ -158,7 +145,7 @@ class SubscriptionGating
             return false;
         }
 
-        if (in_array(self::getEffectiveTier($listing), [self::TIER_STANDARD, self::TIER_PRO, self::TIER_SPOTLIGHT], true)) {
+        if (in_array(self::getEffectiveTier($listing), [self::TIER_STANDARD, self::TIER_PRO], true)) {
             return true;
         }
 
@@ -169,7 +156,7 @@ class SubscriptionGating
         $listing->loadMissing('user.businesses');
 
         return $listing->user?->businesses->contains(
-            fn (Business $business): bool => in_array(self::getEffectiveTier($business), [self::TIER_PRO, self::TIER_SPOTLIGHT], true)
+            fn (Business $business): bool => self::getEffectiveTier($business) === self::TIER_PRO
         ) ?? false;
     }
 
@@ -180,17 +167,7 @@ class SubscriptionGating
     {
         $tier = self::getEffectiveTier($listing);
 
-        return in_array($tier, [self::TIER_PRO, self::TIER_SPOTLIGHT], true);
-    }
-
-    /**
-     * Check if a listing has access to Homepage Spotlight rotation/banner.
-     */
-    public static function canAccessSpotlight(?Business $listing): bool
-    {
-        $tier = self::getEffectiveTier($listing);
-
-        return $tier === self::TIER_SPOTLIGHT;
+        return $tier === self::TIER_PRO;
     }
 
     /**
@@ -200,7 +177,7 @@ class SubscriptionGating
     {
         $tier = self::getEffectiveTier($listing);
 
-        return in_array($tier, [self::TIER_PRO, self::TIER_SPOTLIGHT], true);
+        return $tier === self::TIER_PRO;
     }
 
     /**
@@ -219,7 +196,6 @@ class SubscriptionGating
             'social_links' => self::canAccessSocialLinks($listing),
             'description' => self::canAccessDescription($listing),
             'lead_forms', 'lead_form', 'leads' => self::canAccessLeadForms($listing),
-            'spotlight', 'homepage_spotlight', 'banner' => self::canAccessSpotlight($listing),
             'priority_search', 'priority' => self::canAccessPrioritySearch($listing),
             default => false,
         };
@@ -279,7 +255,7 @@ class SubscriptionGating
      */
     public static function getOwnerPlanBusiness(User $user): ?Business
     {
-        $rank = [self::TIER_FREE => 0, self::TIER_STANDARD => 1, self::TIER_PRO => 2, self::TIER_SPOTLIGHT => 3];
+        $rank = [self::TIER_FREE => 0, self::TIER_STANDARD => 1, self::TIER_PRO => 2];
         $best = null;
         $bestRank = 0;
 

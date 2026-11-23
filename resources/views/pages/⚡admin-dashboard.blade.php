@@ -68,7 +68,7 @@ class extends Component
     {
         return [
             'free' => User::where('is_admin', false)->whereDoesntHave('businesses', function ($query) {
-                $query->whereIn('subscription_tier', [SubscriptionGating::TIER_STANDARD, SubscriptionGating::TIER_PRO, SubscriptionGating::TIER_SPOTLIGHT]);
+                $query->whereIn('subscription_tier', [SubscriptionGating::TIER_STANDARD, SubscriptionGating::TIER_PRO]);
             })->count(),
             'standard' => User::where('is_admin', false)->whereHas('businesses', function ($query) {
                 $query->where('subscription_tier', SubscriptionGating::TIER_STANDARD)->where(function ($q) {
@@ -77,11 +77,6 @@ class extends Component
             })->distinct()->count(),
             'pro' => User::where('is_admin', false)->whereHas('businesses', function ($query) {
                 $query->where('subscription_tier', SubscriptionGating::TIER_PRO)->where(function ($q) {
-                    $q->where('subscription_status', 'active')->orWhere('subscription_status', 'trialing');
-                });
-            })->distinct()->count(),
-            'spotlight' => User::where('is_admin', false)->whereHas('businesses', function ($query) {
-                $query->where('subscription_tier', SubscriptionGating::TIER_SPOTLIGHT)->where(function ($q) {
                     $q->where('subscription_status', 'active')->orWhere('subscription_status', 'trialing');
                 });
             })->distinct()->count(),
@@ -414,7 +409,7 @@ class extends Component
                             <div class="flex items-start justify-between">
                                 <div>
                                     <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Paid Users</p>
-                                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $usersByPlan['standard'] + $usersByPlan['pro'] + $usersByPlan['spotlight'] }}</p>
+                                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $usersByPlan['standard'] + $usersByPlan['pro'] }}</p>
                                 </div>
                                 <div class="rounded-xl bg-emerald-100 p-3 text-emerald-600">
                                     <i class="fa-solid fa-check-circle text-xl"></i>
@@ -465,15 +460,6 @@ class extends Component
                                             <div class="h-full rounded-full bg-amber-500" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['pro'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['pro'] }}</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-600">Spotlight</span>
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-2 w-32 rounded-full bg-purple-200">
-                                            <div class="h-full rounded-full bg-purple-500" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['spotlight'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
-                                        </div>
-                                        <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['spotlight'] }}</span>
                                     </div>
                                 </div>
                             </div>

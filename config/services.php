@@ -52,10 +52,6 @@ return [
                 'monthly' => env('STRIPE_PRICE_PRO_MONTHLY'),
                 'annual' => env('STRIPE_PRICE_PRO_ANNUAL'),
             ],
-            'spotlight' => [
-                'monthly' => env('STRIPE_PRICE_SPOTLIGHT_MONTHLY'),
-                'annual' => env('STRIPE_PRICE_SPOTLIGHT_ANNUAL'),
-            ],
         ],
     ],
 

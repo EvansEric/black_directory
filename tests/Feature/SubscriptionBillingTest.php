@@ -80,42 +80,22 @@ test('feature gating correctly permits or gates features based on active tier', 
         'subscription_status' => 'active',
     ]);
 
-    $spotlightBusiness = Business::create([
-        'is_verified' => true,
-        'user_id' => $user->id,
-        'name' => 'Spotlight Shop',
-        'category' => 'Retail & Fashion',
-        'location' => 'Decatur, GA',
-        'description' => 'Spotlight tier business',
-        'subscription_tier' => 'spotlight',
-        'subscription_status' => 'active',
-    ]);
-
     // Free Tier Gating Checks
     expect(canAccessLogo($freeBusiness))->toBeFalse();
     expect(canAccessCustomUrl($freeBusiness))->toBeFalse();
     expect(canAccessLeadForms($freeBusiness))->toBeFalse();
-    expect(canAccessSpotlight($freeBusiness))->toBeFalse();
 
     // Standard Tier Gating Checks
     expect(canAccessLogo($standardBusiness))->toBeTrue();
     expect(canAccessCustomUrl($standardBusiness))->toBeTrue();
     expect(canAccessDescription($standardBusiness))->toBeTrue();
     expect(canAccessLeadForms($standardBusiness))->toBeFalse();
-    expect(canAccessSpotlight($standardBusiness))->toBeFalse();
 
     // Pro Tier Gating Checks
     expect(canAccessLogo($proBusiness))->toBeTrue();
     expect(canAccessCustomUrl($proBusiness))->toBeTrue();
     expect(canAccessDescription($proBusiness))->toBeTrue();
     expect(canAccessLeadForms($proBusiness))->toBeTrue();
-    expect(canAccessSpotlight($proBusiness))->toBeFalse();
-
-    // Spotlight Tier Gating Checks
-    expect(canAccessLogo($spotlightBusiness))->toBeTrue();
-    expect(canAccessCustomUrl($spotlightBusiness))->toBeTrue();
-    expect(canAccessLeadForms($spotlightBusiness))->toBeTrue();
-    expect(canAccessSpotlight($spotlightBusiness))->toBeTrue();
 });
 
 test('middleware gates endpoints based on feature entitlement', function () {
@@ -295,14 +275,14 @@ test('stripe webhook handles subscription updates, deletions, and payment failur
                 'items' => ['data' => [['id' => 'si_1', 'price' => ['id' => 'price_x', 'product' => 'prod_x'], 'quantity' => 1]]],
                 'metadata' => [
                     'business_id' => $business->id,
-                    'tier' => 'spotlight',
+                    'tier' => 'pro',
                     'billing_cycle' => 'annual',
                 ],
             ],
         ],
     ]);
 
-    expect($business->fresh()->subscription_tier)->toBe('spotlight')
+    expect($business->fresh()->subscription_tier)->toBe('pro')
         ->and($business->fresh()->billing_cycle)->toBe('annual');
 
     // 2. invoice.payment_failed
@@ -372,23 +352,10 @@ test('listings search and directory queries order results by tier priority', fun
         'rating' => 5.0,
     ]);
 
-    $spotlight = Business::create([
-        'is_verified' => true,
-        'user_id' => $user->id,
-        'name' => 'D Spotlight Business',
-        'category' => 'Tech',
-        'location' => 'Atlanta, GA',
-        'description' => 'Spotlight',
-        'subscription_tier' => 'spotlight',
-        'subscription_status' => 'active',
-        'rating' => 5.0,
-    ]);
-
     $ordered = Business::query()->orderedByTier()->get();
 
-    // Hierarchy check: Spotlight > Pro/Featured > Standard > Free
+    // Hierarchy check: Pro/Featured > Standard > Free
     expect($ordered->pluck('id')->all())->toBe([
-        $spotlight->id,
         $pro->id,
         $standard->id,
         $free->id,
@@ -400,7 +367,6 @@ test('listings search and directory queries order results by tier priority', fun
         $free->id,
         $standard->id,
         $pro->id,
-        $spotlight->id,
     ]);
 });
 

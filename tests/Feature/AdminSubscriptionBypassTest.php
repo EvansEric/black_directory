@@ -54,31 +54,6 @@ it('admin users bypass tier restrictions for canAccessLeadForms', function () {
     expect($adminBusiness->canAccessLeadForms())->toBeTrue();
 });
 
-it('admin users bypass tier restrictions for canAccessSpotlight', function () {
-    $nonAdmin = User::factory()->create(['is_admin' => false]);
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    $freeBusiness = Business::create([
-        'user_id' => $nonAdmin->id,
-        'name' => 'Free Business',
-        'category' => 'Retail & Fashion',
-        'location' => 'Atlanta, GA',
-        'description' => 'A free business',
-        'subscription_tier' => SubscriptionGating::TIER_FREE,
-    ]);
-    $adminBusiness = Business::create([
-        'user_id' => $admin->id,
-        'name' => 'Admin Business',
-        'category' => 'Retail & Fashion',
-        'location' => 'Atlanta, GA',
-        'description' => 'An admin business',
-        'subscription_tier' => SubscriptionGating::TIER_FREE,
-    ]);
-
-    expect($freeBusiness->canAccessSpotlight())->toBeFalse();
-    expect($adminBusiness->canAccessSpotlight())->toBeTrue();
-});
-
 it('admin users bypass tier restrictions for canAccessCustomUrl', function () {
     $nonAdmin = User::factory()->create(['is_admin' => false]);
     $admin = User::factory()->create(['is_admin' => true]);
@@ -187,4 +162,3 @@ it('middleware allows admin users to bypass feature verification', function () {
     expect(SubscriptionGating::verifyFeature($adminBusiness, 'lead_forms', $admin))->toBeTrue();
     expect(SubscriptionGating::verifyFeature($freeBusiness, 'lead_forms', $nonAdmin))->toBeFalse();
 });
-

@@ -14,7 +14,7 @@ class VerifySubscriptionFeature
     /**
      * Handle an incoming request.
      *
-     * @param  string  $feature  Feature flag to verify (e.g. 'lead_forms', 'logo', 'custom_url', 'spotlight')
+     * @param  string  $feature  Feature flag to verify (e.g. 'lead_forms', 'logo', 'custom_url')
      */
     public function handle(Request $request, Closure $next, string $feature = 'lead_forms'): Response
     {

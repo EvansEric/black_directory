@@ -221,15 +221,6 @@ class Business extends Model
         return SubscriptionGating::canAccessLeadForms($this);
     }
 
-    public function canAccessSpotlight(): bool
-    {
-        if ($this->user?->is_admin) {
-            return true;
-        }
-
-        return SubscriptionGating::canAccessSpotlight($this);
-    }
-
     /** Listings on a priority plan or flagged as featured get the Featured tag. */
     public function isFeatured(): bool
     {
@@ -302,7 +293,7 @@ class Business extends Model
         return $query->orderByRaw('distance_miles IS NULL')->orderBy('distance_miles')->orderByDesc('featured');
     }
 
-    // Scope for Tier Priority Sorting (Homepage Spotlight > Featured / Pro > Standard > Free)
+    // Scope for Tier Priority Sorting (Pro / Featured > Standard > Free)
     /**
      * @param  Builder<Business>  $query
      * @return Builder<Business>
@@ -325,15 +316,13 @@ class Business extends Model
 
         $query->orderByRaw("
             CASE
-                WHEN subscription_tier = 'spotlight'
-                    AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 4
                 WHEN (subscription_tier = 'pro' OR subscription_tier = 'featured' OR featured = 1)
                     AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 3
                 WHEN (subscription_tier = 'standard' OR subscription_tier = 'basic')
                     AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 2
                 ELSE 1
             END DESC
-        ", [$now, $now, $now]);
+        ", [$now, $now]);
 
         return $query->orderByDesc('featured')->orderByDesc('created_at');
     }
@@ -357,17 +346,6 @@ class Business extends Model
             if ($user) {
                 $q->orWhere('businesses.user_id', $user->id);
             }
-        });
-    }
-
-    public function scopeSpotlight(Builder $query): Builder
-    {
-        return $query->where(function ($q) {
-            $q->where('subscription_tier', 'spotlight')
-                ->where(function ($sq) {
-                    $sq->whereIn('subscription_status', ['active', 'trialing'])
-                        ->orWhereNull('subscription_status');
-                });
         });
     }
 

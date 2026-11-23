@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Business;
-use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -12,12 +10,6 @@ new
 #[Title('Noir Directory | Local Black Business Directory')]
 class extends Component
 {
-    #[Computed]
-    public function spotlightBusinesses()
-    {
-        return Business::query()->with('user.businesses')->where('is_verified', true)->spotlight()->latest()->take(3)->get();
-    }
-
     public function canPromoteListing(): bool
     {
         $user = Auth::user();
@@ -68,64 +60,6 @@ class extends Component
             </div>
         </div>
     </section>
-
-    {{-- Homepage Spotlight Section --}}
-    @if ($this->spotlightBusinesses->count() > 0)
-        <section class="border-b border-amber-900/10 bg-amber-50/70 py-10">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="mb-6 flex items-center justify-between">
-                    <div>
-                        <span class="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-amber-500">
-                            <i class="fa-solid fa-crown"></i> Featured Banner Slots
-                        </span>
-                        <h2 class="mt-0.5 font-serif text-2xl font-bold text-slate-900">Homepage Spotlight</h2>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                    @foreach ($this->spotlightBusinesses as $spotlight)
-                        <div class="bg-white rounded-2xl border-2 border-amber-500/50 p-5 shadow-xl hover:shadow-2xl transition flex flex-col justify-between relative overflow-hidden">
-                            <div class="absolute top-0 right-0 bg-amber-500 text-slate-950 font-extrabold text-[10px] px-3 py-1 rounded-bl-xl uppercase tracking-wider shadow">
-                                <i class="fa-solid fa-crown text-[9px]"></i> Spotlight
-                            </div>
-                            <div>
-                                <div class="flex items-center space-x-3 mb-3">
-                                    <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center font-bold text-amber-700 overflow-hidden shrink-0">
-                                        @if ($spotlight->canAccessLogo() && $spotlight->image)
-                                            <img src="{{ asset('storage/' . $spotlight->image) }}" class="w-full h-full object-cover">
-                                        @else
-                                            <span>{{ substr($spotlight->name, 0, 1) }}</span>
-                                        @endif
-                                    </div>
-                                    <div>
-                                        <h3 class="font-bold text-slate-900 text-base line-clamp-1">{{ $spotlight->name }}</h3>
-                                        <p class="text-xs text-amber-600 font-semibold">{{ $spotlight->category }} • {{ $spotlight->location }}</p>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed">{{ app(\App\Services\BusinessDescription::class)->plainText($spotlight) }}</p>
-                            </div>
-                            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
-                                @if ($spotlight->canAccessCustomUrl() && $spotlight->website)
-                                    <a href="{{ $spotlight->website }}" target="_blank" class="text-xs font-bold text-amber-600 hover:underline">
-                                        Visit Website <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                                    </a>
-                                @else
-                                    <span class="text-xs text-slate-400">Verified Business</span>
-                                @endif
-                                <button
-                                    x-data
-                                    @click="$dispatch('open-lead-modal', { businessId: {{ $spotlight->id }} })"
-                                    class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition"
-                                >
-                                    Contact Business
-                                </button>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </section>
-    @endif
 
     {{-- Main Content --}}
     <main class="mx-auto w-full max-w-7xl grow px-4 py-10 sm:px-6 lg:px-8 lg:py-12">

@@ -30,10 +30,3 @@ if (! function_exists('canAccessDescription')) {
         return SubscriptionGating::canAccessDescription($listing);
     }
 }
-
-if (! function_exists('canAccessSpotlight')) {
-    function canAccessSpotlight(?Business $listing): bool
-    {
-        return SubscriptionGating::canAccessSpotlight($listing);
-    }
-}

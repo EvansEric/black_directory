@@ -430,11 +430,7 @@ new class extends Component
 
                         <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5 {{ auth()->check() && auth()->id() === $business->user_id ? 'max-w-[calc(100%-9.5rem)]' : 'max-w-[calc(100%-4.5rem)]' }}">
                             <span class="max-w-full truncate bg-slate-900/80 backdrop-blur-md text-amber-400 text-[11px] font-semibold px-2.5 py-1 rounded-lg" title="{{ $business->category }}">{{ $business->category }}</span>
-                            @if ($business->canAccessSpotlight())
-                                <span class="bg-amber-500 text-slate-950 text-[11px] font-extrabold px-2 py-1 rounded-lg flex items-center gap-1 shadow">
-                                    <i class="fa-solid fa-crown text-[9px]"></i> Spotlight
-                                </span>
-                            @elseif ($business->isFeatured())
+                            @if ($business->isFeatured())
                                 <span class="bg-amber-400 text-slate-950 text-[11px] font-bold px-2 py-1 rounded-lg flex items-center gap-1" data-featured-tag>
                                     <i class="fa-solid fa-star text-[9px]"></i> Featured
                                 </span>

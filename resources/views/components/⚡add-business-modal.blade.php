@@ -366,7 +366,7 @@ new class extends Component
         $upgrade = match ($tier) {
             SubscriptionGating::TIER_FREE => 'Standard adds features to your existing listing, but still allows only 1 listing.',
             SubscriptionGating::TIER_STANDARD => 'Upgrade to Pro to list up to 5 businesses.',
-            default => 'Upgrade to Spotlight for unlimited listings.',
+            default => 'Pro is the highest available plan.',
         };
 
         return "Your {$plan} plan allows only {$limit} business {$noun}. {$upgrade}";

@@ -36,6 +36,25 @@ it('promotes a user to admin from the command line', function () {
     expect($user->fresh()->is_admin)->toBeTrue();
 });
 
+it('hides subscription upgrades from admins viewing listings they own', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $superAdmin = User::factory()->create(['is_super_admin' => true]);
+
+    foreach ([$admin, $superAdmin] as $owner) {
+        Business::create([
+            'is_verified' => true,
+            'user_id' => $owner->id,
+            'name' => $owner->is_admin ? 'Admin Shop' : 'Super Admin Shop',
+            'category' => 'Retail & Fashion',
+            'location' => 'Atlanta, GA',
+            'description' => 'Verified listing.',
+        ]);
+
+        Livewire::actingAs($owner)->test('business-list')
+            ->assertDontSee('title="Upgrade subscription"', false);
+    }
+});
+
 it('verifies a business from the command line', function () {
     $business = pendingListing(User::factory()->create());
 

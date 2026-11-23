@@ -275,7 +275,7 @@ new class extends Component
     {
         $business = Business::query()->findOrFail($id);
 
-        if (! Auth::check() || Auth::id() !== $business->user_id) {
+        if (! Auth::check() || (! Auth::user()->is_admin && ! Auth::user()->is_super_admin && Auth::id() !== $business->user_id)) {
             abort(403, 'You are not authorized to edit this business.');
         }
 
@@ -454,7 +454,7 @@ new class extends Component
                         </button>
 
                         @auth
-                            @if (auth()->id() === $business->user_id)
+                            @if (auth()->user()->is_admin || auth()->user()->is_super_admin || auth()->id() === $business->user_id)
                                 <button
                                     wire:click="editBusiness({{ $business->id }})"
                                     class="absolute top-3 right-12 w-9 h-9 rounded-full bg-white/80 hover:bg-amber-500 hover:text-slate-950 backdrop-blur-md flex items-center justify-center text-slate-700 transition shadow-md"
@@ -472,7 +472,7 @@ new class extends Component
                                 >
                                     <i class="fa-solid fa-trash text-sm"></i>
                                 </button>
-                                @if ($business->is_verified)
+                                @if ($business->is_verified && ! auth()->user()->is_admin && ! auth()->user()->is_super_admin)
                                     <button
                                         @click="$dispatch('open-subscription-modal', { businessId: {{ $business->id }} })"
                                         class="absolute top-3 right-30 w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 backdrop-blur-md flex items-center justify-center font-bold transition shadow-md"

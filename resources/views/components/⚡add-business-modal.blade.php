@@ -77,7 +77,7 @@ new class extends Component
 
         if ($this->editingBusinessId) {
             abort_unless(
-                Auth::id() === Business::query()->findOrFail($this->editingBusinessId)->user_id,
+                Auth::user()->is_admin || Auth::user()->is_super_admin || Auth::id() === Business::query()->findOrFail($this->editingBusinessId)->user_id,
                 403,
                 'You are not authorized to edit this business.'
             );
@@ -154,7 +154,7 @@ new class extends Component
         if ($this->editingBusinessId) {
             $business = $existingBusiness;
 
-            if (Auth::id() !== $business->user_id) {
+            if (! Auth::user()->is_admin && ! Auth::user()->is_super_admin && Auth::id() !== $business->user_id) {
                 abort(403, 'You are not authorized to edit this business.');
             }
 
@@ -211,7 +211,7 @@ new class extends Component
 
         $business = Business::query()->findOrFail($businessId);
 
-        if (Auth::id() !== $business->user_id) {
+        if (! Auth::user()->is_admin && ! Auth::user()->is_super_admin && Auth::id() !== $business->user_id) {
             abort(403, 'You are not authorized to edit this business.');
         }
 

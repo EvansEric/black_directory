@@ -181,7 +181,7 @@ new class extends Component
             $this->distance = (string) self::DEFAULT_GUEST_DISTANCE;
         }
 
-        // Show the closest businesses first unless the visitor picked another order.
+        // Sort by distance within the featured and non-featured groups.
         if ($this->sortVal === 'featured') {
             $this->sortVal = 'nearest';
         }
@@ -393,10 +393,10 @@ new class extends Component
             <select id="sort-select" wire:model.live="sortVal" class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 <option value="featured">Featured First</option>
                 @if ($this->hasLocation())
-                    <option value="nearest">Nearest First</option>
+                    <option value="nearest">Nearest (Featured First)</option>
                 @endif
-                <option value="rating">Highest Rated</option>
-                <option value="name">Name (A-Z)</option>
+                <option value="rating">Highest Rated (Featured First)</option>
+                <option value="name">Name A-Z (Featured First)</option>
             </select>
         </div>
     </div>

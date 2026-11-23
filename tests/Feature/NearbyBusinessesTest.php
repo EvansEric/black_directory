@@ -35,6 +35,25 @@ it('sorts nearest first once the visitor shares their location', function () {
         ->assertSeeHtml('data-distance-badge');
 });
 
+it('shows featured listings before closer businesses for location and zip searches', function () {
+    Business::where('name', 'Decatur Shop')->update(['featured' => true]);
+    Business::where('name', 'Macon Shop')->update(['subscription_tier' => 'pro']);
+
+    Livewire::test('business-list')
+        ->call('setLocation', 33.7490, -84.3880)
+        ->set('distance', '100')
+        ->assertSeeInOrder(['Macon Shop', 'Decatur Shop']);
+
+    $this->mock(Geocoder::class)->shouldReceive('coordinatesForZip')->with('30301')
+        ->andReturn(['latitude' => 33.7490, 'longitude' => -84.3880]);
+
+    Livewire::test('business-list')
+        ->set('distance', '100')
+        ->set('location', '30301')
+        ->assertSet('sortVal', 'featured')
+        ->assertSeeInOrder(['Macon Shop', 'Decatur Shop']);
+});
+
 it('shows only nearby verified businesses to a guest after sharing their location', function () {
     nearbyListing('Unverified Shop', 33.75, -84.39)->update(['is_verified' => false]);
 

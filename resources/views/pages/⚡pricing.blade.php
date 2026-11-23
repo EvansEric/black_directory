@@ -37,7 +37,7 @@ class extends Component
             'description' => 'Priority placement for growing local businesses.',
             'monthly' => '9.99',
             'annual' => '95.90',
-            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'All Standard Features'],
+            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Featured in Search Results with a Featured Badge', 'All Standard Features'],
             'popular' => true,
         ],
     ];

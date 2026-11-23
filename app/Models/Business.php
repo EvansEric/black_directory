@@ -212,10 +212,9 @@ class Business extends Model
         return SubscriptionGating::canAccessDescription($this);
     }
 
-    /** Listings on a priority plan or flagged as featured get the Featured tag. */
     public function isFeatured(): bool
     {
-        return $this->featured || $this->canAccessPrioritySearch();
+        return SubscriptionGating::canAccessPrioritySearch($this);
     }
 
     public function canAccessPrioritySearch(): bool
@@ -274,23 +273,41 @@ class Business extends Model
     }
 
     /**
-     * Closest first; listings without coordinates go last.
+     * Featured listings first, then closest first; listings without coordinates go last within each group.
      *
      * @param  Builder<Business>  $query
      * @return Builder<Business>
      */
     public function scopeOrderedByDistance(Builder $query): Builder
     {
-        return $query->orderByRaw('distance_miles IS NULL')->orderBy('distance_miles')->orderByDesc('featured');
+        return $query->orderedFeaturedFirst()->orderByRaw('distance_miles IS NULL')->orderBy('distance_miles');
     }
 
-    // Scope for Tier Priority Sorting (Pro / Featured > Standard > Free)
+    /**
+     * @param  Builder<Business>  $query
+     * @return Builder<Business>
+     */
+    public function scopeOrderedFeaturedFirst(Builder $query): Builder
+    {
+        return $query->orderByRaw("
+            CASE
+                WHEN is_verified = 1
+                    AND LOWER(COALESCE(subscription_tier, 'free')) IN ('pro', 'featured')
+                    AND (LOWER(COALESCE(subscription_status, 'active')) IN ('active', 'trialing') OR subscription_ends_at > ?)
+                THEN 0
+                ELSE 1
+            END
+        ", [now()->toDateTimeString()]);
+    }
+
     /**
      * @param  Builder<Business>  $query
      * @return Builder<Business>
      */
     public function scopeOrderedByTier(Builder $query, string $secondarySort = 'featured'): Builder
     {
+        $query->orderedFeaturedFirst();
+
         if ($secondarySort === 'name') {
             return $query->orderBy('name');
         }
@@ -307,15 +324,14 @@ class Business extends Model
 
         $query->orderByRaw("
             CASE
-                WHEN (subscription_tier = 'pro' OR subscription_tier = 'featured' OR featured = 1)
-                    AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 3
-                WHEN (subscription_tier = 'standard' OR subscription_tier = 'basic')
-                    AND (subscription_status IN ('active', 'trialing') OR subscription_status IS NULL OR subscription_ends_at > ?) THEN 2
+                WHEN is_verified = 1
+                    AND LOWER(COALESCE(subscription_tier, 'free')) IN ('standard', 'basic')
+                    AND (LOWER(COALESCE(subscription_status, 'active')) IN ('active', 'trialing') OR subscription_ends_at > ?) THEN 2
                 ELSE 1
             END DESC
-        ", [$now, $now]);
+        ", [$now]);
 
-        return $query->orderByDesc('featured')->orderByDesc('created_at');
+        return $query->orderByDesc('created_at');
     }
 
     /**

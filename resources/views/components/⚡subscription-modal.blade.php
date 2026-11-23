@@ -433,6 +433,10 @@ new class extends Component
                         </li>
                         <li class="flex items-center gap-2">
                             <i class="fa-solid fa-check text-amber-500 text-xs"></i>
+                            <span>Featured in Search Results with a Featured Badge</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-amber-500 text-xs"></i>
                             <span>All Standard Features</span>
                         </li>
                     </ul>

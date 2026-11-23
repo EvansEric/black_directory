@@ -306,7 +306,6 @@ test('listings search and directory queries order results by tier priority', fun
 
     $ordered = Business::query()->orderedByTier()->get();
 
-    // Hierarchy check: Pro/Featured > Standard > Free
     expect($ordered->pluck('id')->all())->toBe([
         $pro->id,
         $standard->id,
@@ -316,10 +315,38 @@ test('listings search and directory queries order results by tier priority', fun
     $alphabetical = Business::query()->orderedByTier('name')->get();
 
     expect($alphabetical->pluck('id')->all())->toBe([
+        $pro->id,
         $free->id,
         $standard->id,
-        $pro->id,
     ]);
+});
+
+it('shows featured listings before flagged free and expired listings in every directory sort', function () {
+    $owner = User::factory()->create();
+    $attributes = [
+        'user_id' => $owner->id, 'is_verified' => true, 'category' => 'Tech',
+        'location' => 'Atlanta, GA', 'description' => 'Ordering test',
+    ];
+
+    foreach (range(1, 7) as $index) {
+        Business::create([...$attributes, 'name' => "A Free $index", 'featured' => true]);
+    }
+
+    Business::create([
+        ...$attributes, 'name' => 'B Expired', 'featured' => true, 'subscription_tier' => 'pro',
+        'subscription_status' => 'canceled', 'subscription_ends_at' => now()->subDay(),
+    ]);
+    $pro = Business::create([
+        ...$attributes, 'name' => 'Z Pro', 'featured' => false, 'subscription_tier' => 'pro',
+    ]);
+
+    foreach (['featured', 'name', 'rating'] as $sort) {
+        Livewire::test('business-list')
+            ->set('search', 'Ordering test')
+            ->set('sortVal', $sort)
+            ->assertSee($pro->name)
+            ->assertSeeInOrder([$pro->name, 'A Free']);
+    }
 });
 
 it('keeps priority search placement through a canceled subscription period', function () {

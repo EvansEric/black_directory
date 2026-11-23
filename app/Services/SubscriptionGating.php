@@ -47,7 +47,7 @@ class SubscriptionGating
             'annual_price' => 95.90,
             'stripe_monthly_price_id' => 'price_pro_monthly',
             'stripe_annual_price_id' => 'price_pro_annual',
-            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'All Standard Features'],
+            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Featured in Search Results with a Featured Badge', 'All Standard Features'],
             'priority' => 2,
         ],
     ];

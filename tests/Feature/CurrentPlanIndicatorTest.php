@@ -58,6 +58,13 @@ it('shows no current plan badge to guests on the pricing page', function () {
     Livewire::test('pages::pricing')->assertDontSeeHtml('data-current-plan-badge');
 });
 
+it('shows the Featured badge benefit before all standard features on Pro', function () {
+    $features = ['Priority Search Placement', 'Featured in Search Results with a Featured Badge', 'All Standard Features'];
+
+    Livewire::test('pages::pricing')->assertSeeInOrder($features);
+    Livewire::test('subscription-modal')->assertSeeInOrder($features);
+});
+
 it('keeps a paid plan that is waiting for a listing hidden and on Free', function () {
     $user = User::factory()->create();
     $user->forceFill([
@@ -205,15 +212,40 @@ it('uses the checkout tier when two plans share one Stripe price', function () {
     expect($business->fresh()->subscription_tier)->toBe('pro');
 });
 
-it('tags featured and pro listings as Featured in the directory', function () {
+it('only tags active pro listings as Featured in the directory', function () {
     $owner = User::factory()->create();
-    Business::create(['is_verified' => true, 'user_id' => $owner->id, 'name' => 'Flagged Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x', 'featured' => true]);
+    $admin = User::factory()->create(['is_admin' => true]);
+    $attributes = [
+        'is_verified' => true, 'user_id' => $owner->id, 'category' => 'Retail & Fashion',
+        'location' => 'Atlanta, GA', 'description' => 'x', 'featured' => true,
+    ];
 
-    Business::create(['is_verified' => true, 'user_id' => $owner->id, 'name' => 'Plain Shop', 'category' => 'Retail & Fashion', 'location' => 'Atlanta, GA', 'description' => 'x']);
+    $free = Business::create([...$attributes, 'name' => 'Free Shop', 'subscription_tier' => 'free']);
+    $standard = Business::create([...$attributes, 'name' => 'Standard Shop', 'subscription_tier' => 'standard']);
+    $adminFree = Business::create([...$attributes, 'user_id' => $admin->id, 'name' => 'Admin Shop', 'subscription_tier' => 'free']);
+    $pro = Business::create([...$attributes, 'name' => 'Pro Shop', 'subscription_tier' => 'pro', 'featured' => false]);
+    $expired = Business::create([
+        ...$attributes, 'name' => 'Expired Shop', 'subscription_tier' => 'pro',
+        'subscription_status' => 'canceled', 'subscription_ends_at' => now()->subDay(),
+    ]);
+    $grace = Business::create([
+        ...$attributes, 'name' => 'Grace Shop', 'subscription_tier' => 'pro',
+        'subscription_status' => 'canceled', 'subscription_ends_at' => now()->addDay(),
+    ]);
 
-    Livewire::test('business-list')
-        ->assertSeeHtml('data-featured-tag')
-        ->assertSee('Flagged Shop');
+    foreach ([$free, $standard, $adminFree, $expired] as $business) {
+        expect($business->isFeatured())->toBeFalse();
 
-    expect(substr_count(Livewire::test('business-list')->html(), 'data-featured-tag'))->toBe(1);
+        Livewire::test('business-list')->set('search', $business->name)
+            ->assertSee($business->name)
+            ->assertDontSeeHtml('data-featured-tag');
+    }
+
+    foreach ([$pro, $grace] as $business) {
+        expect($business->isFeatured())->toBeTrue();
+
+        Livewire::test('business-list')->set('search', $business->name)
+            ->assertSee($business->name)
+            ->assertSeeHtml('data-featured-tag');
+    }
 });

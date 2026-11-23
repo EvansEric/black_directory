@@ -3,7 +3,6 @@
 use App\Http\Controllers\Admin\BusinessVerificationController;
 use App\Http\Controllers\BusinessLinkController;
 use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlacesAutocompleteController;
 use App\Http\Controllers\ReviewController;
@@ -56,11 +55,6 @@ Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])-
 
 // Stripe webhooks (Cashier also serves them at /stripe/webhook)
 Route::post('/api/webhooks/stripe', [StripeWebhookController::class, 'handleWebhook'])->name('webhooks.stripe');
-
-// Lead Generation Endpoint for Listings
-Route::post('/listings/{business}/leads', [LeadController::class, 'store'])
-    ->middleware('subscription.feature:lead_forms')
-    ->name('listings.leads.store');
 
 Route::redirect('/forgot-password', '/')->name('password.request');
 

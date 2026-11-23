@@ -212,15 +212,6 @@ class Business extends Model
         return SubscriptionGating::canAccessDescription($this);
     }
 
-    public function canAccessLeadForms(): bool
-    {
-        if ($this->user?->is_admin) {
-            return true;
-        }
-
-        return SubscriptionGating::canAccessLeadForms($this);
-    }
-
     /** Listings on a priority plan or flagged as featured get the Featured tag. */
     public function isFeatured(): bool
     {
@@ -355,13 +346,5 @@ class Business extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * @return HasMany<Lead, $this>
-     */
-    public function leads(): HasMany
-    {
-        return $this->hasMany(Lead::class);
     }
 }

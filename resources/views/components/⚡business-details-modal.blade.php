@@ -154,15 +154,6 @@ new class extends Component
                         >
                             <i class="fa-solid fa-diamond-turn-right"></i> Open in Google Maps
                         </a>
-                        @if ($business->canAccessLeadForms())
-                            <button
-                                type="button"
-                                @click="open = false; $wire.close(); $dispatch('open-lead-modal', { businessId: {{ $business->id }} })"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400"
-                            >
-                                <i class="fa-solid fa-paper-plane"></i> Contact
-                            </button>
-                        @endif
                     </div>
                 </div>
 

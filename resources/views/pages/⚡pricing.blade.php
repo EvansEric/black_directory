@@ -34,10 +34,10 @@ class extends Component
         [
             'key' => 'pro',
             'name' => 'Pro',
-            'description' => 'Priority placement and direct customer lead forms.',
+            'description' => 'Priority placement for growing local businesses.',
             'monthly' => '9.99',
             'annual' => '95.90',
-            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Lead Generation Forms', 'All Standard Features'],
+            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'All Standard Features'],
             'popular' => true,
         ],
     ];
@@ -81,7 +81,7 @@ class extends Component
                 </span>
                 <h1 class="mb-4 font-serif text-4xl font-bold text-slate-900 sm:text-5xl">Listing Plans & Pricing</h1>
                 <p class="text-sm leading-relaxed text-slate-600 sm:text-base">
-                    Choose the plan that fits your business. Upgrade anytime to unlock more visibility, branding, and lead generation tools.
+                    Choose the plan that fits your business. Upgrade anytime to unlock more visibility and branding tools.
                 </p>
                 <p class="mt-4 text-sm text-slate-600">
                     Paid plans require a verified listing and renew until canceled.

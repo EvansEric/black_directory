@@ -580,15 +580,6 @@ new class extends Component
                         <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                             <span class="text-xs text-slate-400">Verified Black-Owned</span>
                             <div class="flex items-center space-x-2">
-                                @if ($business->canAccessLeadForms())
-                                    <button
-                                        @click="$dispatch('open-lead-modal', { businessId: {{ $business->id }} })"
-                                        class="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition flex items-center gap-1 shadow-sm"
-                                    >
-                                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
-                                        <span>Contact</span>
-                                    </button>
-                                @endif
                                 @if ($business->phone)
                                     <a href="tel:{{ $business->phone }}" class="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center space-x-1">
                                         <span>Call</span>

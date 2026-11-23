@@ -47,7 +47,7 @@ class SubscriptionGating
             'annual_price' => 95.90,
             'stripe_monthly_price_id' => 'price_pro_monthly',
             'stripe_annual_price_id' => 'price_pro_annual',
-            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'Lead Generation Forms', 'All Standard Features'],
+            'features' => ['Up to 5 Business Listings', 'Priority Search Placement', 'All Standard Features'],
             'priority' => 2,
         ],
     ];
@@ -161,16 +161,6 @@ class SubscriptionGating
     }
 
     /**
-     * Check if a listing has access to lead generation forms.
-     */
-    public static function canAccessLeadForms(?Business $listing): bool
-    {
-        $tier = self::getEffectiveTier($listing);
-
-        return $tier === self::TIER_PRO;
-    }
-
-    /**
      * Check if a listing has priority search placement.
      */
     public static function canAccessPrioritySearch(?Business $listing): bool
@@ -195,7 +185,6 @@ class SubscriptionGating
             'custom_url', 'website', 'custom_link' => self::canAccessCustomUrl($listing),
             'social_links' => self::canAccessSocialLinks($listing),
             'description' => self::canAccessDescription($listing),
-            'lead_forms', 'lead_form', 'leads' => self::canAccessLeadForms($listing),
             'priority_search', 'priority' => self::canAccessPrioritySearch($listing),
             default => false,
         };

@@ -313,7 +313,7 @@ new class extends Component
                 <i class="fa-solid fa-bolt mr-1.5"></i> Supercharge Your Listing Visibility
             </span>
             <h3 class="font-serif text-3xl font-bold text-slate-900">Choose Your Listing Plan</h3>
-            <p class="text-slate-500 text-xs sm:text-sm mt-1">Upgrade your business listing to unlock premium exposure, lead generation, and custom branding.</p>
+            <p class="text-slate-500 text-xs sm:text-sm mt-1">Upgrade your business listing to unlock premium exposure and custom branding.</p>
         </div>
 
         {{-- Billing Cycle Toggle --}}
@@ -415,7 +415,7 @@ new class extends Component
 
                 <div>
                     <h4 class="font-bold text-slate-900 text-base mb-1">Pro</h4>
-                    <p class="text-xs text-slate-500 mb-4">Priority placement & direct customer lead forms.</p>
+                    <p class="text-xs text-slate-500 mb-4">Priority placement for growing local businesses.</p>
 
                     <div class="mb-4">
                         <span class="text-3xl font-bold text-slate-900">${{ $billingCycle === 'annual' ? '95.90' : '9.99' }}</span>
@@ -430,10 +430,6 @@ new class extends Component
                         <li class="flex items-center gap-2 font-semibold text-slate-800">
                             <i class="fa-solid fa-star text-amber-500 text-xs"></i>
                             <span>Priority Search Placement</span>
-                        </li>
-                        <li class="flex items-center gap-2 font-semibold text-slate-800">
-                            <i class="fa-solid fa-paper-plane text-amber-500 text-xs"></i>
-                            <span>Lead Generation Forms</span>
                         </li>
                         <li class="flex items-center gap-2">
                             <i class="fa-solid fa-check text-amber-500 text-xs"></i>

@@ -29,31 +29,6 @@ it('admin users bypass tier restrictions for canAccessLogo', function () {
     expect($adminBusiness->canAccessLogo())->toBeTrue();
 });
 
-it('admin users bypass tier restrictions for canAccessLeadForms', function () {
-    $nonAdmin = User::factory()->create(['is_admin' => false]);
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    $freeBusiness = Business::create([
-        'user_id' => $nonAdmin->id,
-        'name' => 'Free Business',
-        'category' => 'Retail & Fashion',
-        'location' => 'Atlanta, GA',
-        'description' => 'A free business',
-        'subscription_tier' => SubscriptionGating::TIER_FREE,
-    ]);
-    $adminBusiness = Business::create([
-        'user_id' => $admin->id,
-        'name' => 'Admin Business',
-        'category' => 'Retail & Fashion',
-        'location' => 'Atlanta, GA',
-        'description' => 'An admin business',
-        'subscription_tier' => SubscriptionGating::TIER_FREE,
-    ]);
-
-    expect($freeBusiness->canAccessLeadForms())->toBeFalse();
-    expect($adminBusiness->canAccessLeadForms())->toBeTrue();
-});
-
 it('admin users bypass tier restrictions for canAccessCustomUrl', function () {
     $nonAdmin = User::factory()->create(['is_admin' => false]);
     $admin = User::factory()->create(['is_admin' => true]);
@@ -135,30 +110,4 @@ it('admin users get unlimited business listings', function () {
 
     expect(SubscriptionGating::businessLimit($nonAdmin))->toBe(1); // Free tier limit
     expect(SubscriptionGating::businessLimit($admin))->toBeNull(); // Unlimited for admin
-});
-
-it('middleware allows admin users to bypass feature verification', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-    $nonAdmin = User::factory()->create(['is_admin' => false]);
-
-    $freeBusiness = Business::create([
-        'user_id' => $nonAdmin->id,
-        'name' => 'Free Business',
-        'category' => 'Retail & Fashion',
-        'location' => 'Atlanta, GA',
-        'description' => 'A free business',
-        'subscription_tier' => SubscriptionGating::TIER_FREE,
-    ]);
-    $adminBusiness = Business::create([
-        'user_id' => $admin->id,
-        'name' => 'Admin Business',
-        'category' => 'Retail & Fashion',
-        'location' => 'Atlanta, GA',
-        'description' => 'An admin business',
-        'subscription_tier' => SubscriptionGating::TIER_FREE,
-    ]);
-
-    // Verify that admin's business passes feature verification
-    expect(SubscriptionGating::verifyFeature($adminBusiness, 'lead_forms', $admin))->toBeTrue();
-    expect(SubscriptionGating::verifyFeature($freeBusiness, 'lead_forms', $nonAdmin))->toBeFalse();
 });

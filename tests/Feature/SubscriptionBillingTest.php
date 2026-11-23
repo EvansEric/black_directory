@@ -83,64 +83,16 @@ test('feature gating correctly permits or gates features based on active tier', 
     // Free Tier Gating Checks
     expect(canAccessLogo($freeBusiness))->toBeFalse();
     expect(canAccessCustomUrl($freeBusiness))->toBeFalse();
-    expect(canAccessLeadForms($freeBusiness))->toBeFalse();
 
     // Standard Tier Gating Checks
     expect(canAccessLogo($standardBusiness))->toBeTrue();
     expect(canAccessCustomUrl($standardBusiness))->toBeTrue();
     expect(canAccessDescription($standardBusiness))->toBeTrue();
-    expect(canAccessLeadForms($standardBusiness))->toBeFalse();
 
     // Pro Tier Gating Checks
     expect(canAccessLogo($proBusiness))->toBeTrue();
     expect(canAccessCustomUrl($proBusiness))->toBeTrue();
     expect(canAccessDescription($proBusiness))->toBeTrue();
-    expect(canAccessLeadForms($proBusiness))->toBeTrue();
-});
-
-test('middleware gates endpoints based on feature entitlement', function () {
-    $user = User::factory()->create();
-
-    $standardBusiness = Business::create([
-        'is_verified' => true,
-        'user_id' => $user->id,
-        'name' => 'Standard Cafe',
-        'category' => 'Dining & Food',
-        'location' => 'Atlanta, GA',
-        'description' => 'Good food',
-        'subscription_tier' => 'standard',
-        'subscription_status' => 'active',
-    ]);
-
-    $proBusiness = Business::create([
-        'is_verified' => true,
-        'user_id' => $user->id,
-        'name' => 'Pro Cafe',
-        'category' => 'Dining & Food',
-        'location' => 'Atlanta, GA',
-        'description' => 'Great food',
-        'subscription_tier' => 'pro',
-        'subscription_status' => 'active',
-    ]);
-
-    // Lead submission to standard business should fail with 403
-    $this->postJson("/listings/{$standardBusiness->id}/leads", [
-        'name' => 'John Client',
-        'email' => 'john@example.com',
-        'message' => 'Need quote',
-    ])->assertForbidden();
-
-    // Lead submission to pro business should succeed with 201
-    $this->postJson("/listings/{$proBusiness->id}/leads", [
-        'name' => 'John Client',
-        'email' => 'john@example.com',
-        'message' => 'Need quote',
-    ])->assertCreated();
-
-    $this->assertDatabaseHas('leads', [
-        'business_id' => $proBusiness->id,
-        'email' => 'john@example.com',
-    ]);
 });
 
 test('subscription checkout and cancellation routes work', function () {

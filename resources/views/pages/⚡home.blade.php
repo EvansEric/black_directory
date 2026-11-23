@@ -87,6 +87,5 @@ class extends Component
     <livewire:auth-modal />
     <livewire:add-business-modal />
     <livewire:subscription-modal />
-    <livewire:lead-form-modal />
     <livewire:business-details-modal />
 </div>

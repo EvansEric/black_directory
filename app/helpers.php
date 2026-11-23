@@ -3,13 +3,6 @@
 use App\Models\Business;
 use App\Services\SubscriptionGating;
 
-if (! function_exists('canAccessLeadForms')) {
-    function canAccessLeadForms(?Business $listing): bool
-    {
-        return SubscriptionGating::canAccessLeadForms($listing);
-    }
-}
-
 if (! function_exists('canAccessLogo')) {
     function canAccessLogo(?Business $listing): bool
     {

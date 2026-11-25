@@ -37,6 +37,7 @@ new class extends Component
 <div
     x-data="{ open: false }"
     x-on:show-business-details.window="open = true"
+    x-on:open-auth-modal.window="if (open) { open = false; $wire.close() }"
     x-show="open"
     x-transition.opacity
     class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm"
@@ -132,6 +133,7 @@ new class extends Component
 
                     <div class="border-t border-slate-200 pt-4">
                         <h4 class="text-sm font-bold text-slate-900">Verified customer reviews</h4>
+                        <x-review-action :business="$business" />
                         @forelse ($business->reviews()->with('user')->latest()->limit(5)->get() as $review)
                             <div class="mt-3 text-xs text-slate-600">
                                 <p class="font-semibold text-slate-900">{{ $review->user->name }} &middot; {{ $review->rating }}/5</p>

@@ -52,7 +52,7 @@ class extends Component
         $this->timeFilter = $filter;
     }
 
-    public function updated($name)
+    public function updated(string $name): void
     {
         if (in_array($name, ['businessStatus', 'businessSearch'])) {
             $this->resetPage();
@@ -353,6 +353,10 @@ class extends Component
                     <i class="fa-solid fa-shield-halved mr-2"></i> Business Verification
                 </button>
 
+                <a href="{{ route('admin.review-verifications.index') }}" class="block w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100">
+                    <i class="fa-solid fa-star mr-2"></i> Review Verification
+                </a>
+
                 <button
                     wire:click="setSection('user-management')"
                     class="w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium transition {{ $section === 'user-management' ? 'bg-amber-100 text-amber-900' : 'text-slate-700 hover:bg-slate-100' }}"
@@ -368,6 +372,7 @@ class extends Component
                 {{-- Header --}}
                 <div class="mb-8">
                     <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Admin Panel</p>
+                    <a href="{{ route('admin.review-verifications.index') }}" class="mt-3 inline-block text-sm font-semibold text-amber-700 hover:underline lg:hidden">Review Verification</a>
                     <div class="mt-2 flex items-center justify-between">
                         <h1 class="font-serif text-3xl font-bold text-slate-900">
                             @if ($section === 'analytics') Analytics Dashboard @elseif ($section === 'businesses') Business Verification @else User Management @endif
@@ -439,7 +444,7 @@ class extends Component
                                     <span class="text-sm text-slate-600">Free</span>
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 w-32 rounded-full bg-slate-200">
-                                            <div class="h-full w-full rounded-full bg-slate-400" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['free'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
+                                            <div class="h-full rounded-full bg-slate-400" @style(['width: ' . min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['free'] / $this->getTotalUsers()) * 100 : 0)) . '%'])></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['free'] }}</span>
                                     </div>
@@ -448,7 +453,7 @@ class extends Component
                                     <span class="text-sm text-slate-600">Standard</span>
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 w-32 rounded-full bg-blue-200">
-                                            <div class="h-full rounded-full bg-blue-500" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['standard'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
+                                            <div class="h-full rounded-full bg-blue-500" @style(['width: ' . min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['standard'] / $this->getTotalUsers()) * 100 : 0)) . '%'])></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['standard'] }}</span>
                                     </div>
@@ -457,7 +462,7 @@ class extends Component
                                     <span class="text-sm text-slate-600">Pro</span>
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 w-32 rounded-full bg-amber-200">
-                                            <div class="h-full rounded-full bg-amber-500" style="width: {{ min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['pro'] / $this->getTotalUsers()) * 100 : 0)) }}%"></div>
+                                            <div class="h-full rounded-full bg-amber-500" @style(['width: ' . min(100, ($this->getTotalUsers() > 0 ? ($usersByPlan['pro'] / $this->getTotalUsers()) * 100 : 0)) . '%'])></div>
                                         </div>
                                         <span class="w-12 text-right text-sm font-semibold text-slate-900">{{ $usersByPlan['pro'] }}</span>
                                     </div>
@@ -485,9 +490,12 @@ class extends Component
                                 @forelse ($trend as $period => $count)
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-slate-600 w-16 truncate">{{ $period }}</span>
-                                        <div class="flex-1 mx-2 h-2 rounded-full bg-slate-200">
-                                            <div class="h-full rounded-full bg-emerald-500" style="width: {{ ($count / max($maxValue, 1)) * 100 }}%"></div>
-                                        </div>
+                                        <progress
+                                            class="mx-2 h-2 flex-1 accent-emerald-500"
+                                            value="{{ $count }}"
+                                            max="{{ max($maxValue, 1) }}"
+                                            aria-label="New users for {{ $period }}"
+                                        ></progress>
                                         <span class="text-xs font-semibold text-slate-900 w-8 text-right">{{ $count }}</span>
                                     </div>
                                 @empty

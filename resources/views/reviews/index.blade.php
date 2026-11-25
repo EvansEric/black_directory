@@ -4,6 +4,7 @@
         <a href="{{ route('home') }}" class="text-sm font-semibold text-amber-700 hover:underline">&larr; Directory</a>
         <h1 class="mt-4 font-serif text-3xl font-bold text-slate-900">Verified reviews for {{ $business->name }}</h1>
         <a href="{{ route('businesses.show', $business) }}" class="mt-3 inline-block text-sm font-semibold text-amber-700 hover:underline">View business profile</a>
+        <x-review-action :business="$business" />
         <div class="mt-6 space-y-4">
             @forelse ($reviews as $review)
                 <article class="rounded-2xl border border-slate-200 bg-white p-6">

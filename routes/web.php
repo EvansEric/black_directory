@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BusinessVerificationController;
+use App\Http\Controllers\Admin\ReviewVerificationController;
 use App\Http\Controllers\BusinessLinkController;
 use App\Http\Controllers\BusinessProfileController;
 use App\Http\Controllers\GoogleAuthController;
@@ -32,9 +33,19 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::livewire('/dashboard', 'pages::admin-dashboard')->name('dashboard');
     Route::get('/businesses', [BusinessVerificationController::class, 'index'])->name('businesses.index');
     Route::patch('/businesses/{business}/verification', [BusinessVerificationController::class, 'update'])->name('businesses.verification');
+    Route::get('/review-verifications', [ReviewVerificationController::class, 'index'])->name('review-verifications.index');
+    Route::get('/review-verifications/{verification}/evidence', [ReviewVerificationController::class, 'evidence'])
+        ->name('review-verifications.evidence');
+    Route::post('/review-verifications/{verification}/decision', [ReviewVerificationController::class, 'decide'])
+        ->middleware('throttle:30,1')->name('review-verifications.decide');
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/businesses/{business}/reviews/create', [ReviewController::class, 'create'])->name('reviews.create');
+    Route::post('/businesses/{business}/reviews/verification', [ReviewController::class, 'requestVerification'])
+        ->middleware('throttle:5,1')->name('reviews.verify');
+    Route::post('/businesses/{business}/reviews', [ReviewController::class, 'store'])
+        ->middleware('throttle:10,1')->name('reviews.store');
     Route::livewire('/profile', 'pages::profile')->name('profile');
     Route::get('/places/autocomplete', [PlacesAutocompleteController::class, 'index'])
         ->middleware('throttle:60,1')->name('places.autocomplete');

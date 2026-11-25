@@ -48,6 +48,7 @@
                 {{ $business->reviews_count ? number_format($business->reviews_avg_rating, 1).' out of 5 ('.$business->reviews_count.' verified reviews)' : 'Not yet rated' }}
             </p>
             <a href="{{ route('reviews.index', $business) }}" class="mt-3 inline-block font-semibold text-amber-700 hover:underline">Read reviews for {{ $business->name }}</a>
+            <x-review-action :business="$business" />
         </article>
     </main>
     <x-footer />

@@ -90,6 +90,12 @@ class Business extends Model
         return $this->hasMany(BusinessReview::class);
     }
 
+    /** @return HasMany<ReviewVerification, $this> */
+    public function reviewVerifications(): HasMany
+    {
+        return $this->hasMany(ReviewVerification::class);
+    }
+
     // CamelCase accessors to fulfill API requirements ($business->subscriptionTier, etc.)
     public function getSubscriptionTierAttribute(): string
     {

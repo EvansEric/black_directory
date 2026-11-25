@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Admin\BusinessVerificationController;
 use App\Http\Controllers\BusinessLinkController;
+use App\Http\Controllers\BusinessProfileController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlacesAutocompleteController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -16,8 +18,14 @@ Route::livewire('/', 'pages::home')->name('home');
 Route::livewire('/pricing', 'pages::pricing')->name('pricing');
 Route::livewire('/mission', 'pages::mission')->name('mission');
 Route::livewire('/listing-disclosure', 'pages::listing-disclosure')->name('listing-disclosure');
+Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('robots');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+Route::get('/sitemaps/pages.xml', [SitemapController::class, 'pages'])->name('sitemap.pages');
+Route::get('/sitemaps/businesses/{page}.xml', [SitemapController::class, 'businesses'])
+    ->where('page', '[1-9][0-9]*')->name('sitemap.businesses');
 Route::redirect('/login', '/')->name('login');
 Route::get('/b/{slug}', BusinessLinkController::class)->where('slug', '[a-z0-9-]+')->name('business.link');
+Route::get('/businesses/{business}', BusinessProfileController::class)->name('businesses.show');
 Route::get('/businesses/{business}/reviews', [ReviewController::class, 'index'])->name('reviews.index');
 
 Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {

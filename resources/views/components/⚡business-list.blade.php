@@ -498,7 +498,13 @@ new class extends Component
                     <div class="p-4 grow flex flex-col justify-between">
                         <div>
                             <div class="flex justify-between items-start mb-2">
-                                <h3 class="font-bold text-slate-900 text-base group-hover:text-amber-600 transition-colors line-clamp-1">{{ $business->name }}</h3>
+                                <h3 class="font-bold text-slate-900 text-base group-hover:text-amber-600 transition-colors line-clamp-1">
+                                    @if ($business->is_verified)
+                                        <a href="{{ route('businesses.show', $business) }}" @click.stop>{{ $business->name }}</a>
+                                    @else
+                                        {{ $business->name }}
+                                    @endif
+                                </h3>
                                 <div class="flex items-center space-x-1 bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md text-xs font-bold shrink-0">
                                     <i class="fa-solid fa-star text-amber-500 text-[10px]"></i>
                                     <span>{{ $business->reviews_count ? number_format($business->reviews_avg_rating, 1) . ' (' . $business->reviews_count . ')' : 'Not yet rated' }}</span>

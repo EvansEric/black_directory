@@ -14,15 +14,19 @@
             @forelse ($verifications as $verification)
                 <article class="rounded-2xl border border-slate-200 bg-white p-6">
                     <h2 class="text-lg font-bold text-slate-900">{{ $verification->business->name }}</h2>
-                    <p class="mt-1 text-sm text-slate-600">Customer: {{ $verification->user->name }} ({{ $verification->user->email }})</p>
-                    <p class="mt-1 break-all text-sm text-slate-600">Reference: {{ $verification->transaction_reference }}</p>
                     <p class="mt-1 text-xs text-slate-500">Submitted {{ $verification->created_at->format('M j, Y g:i A') }}</p>
-                    <a href="{{ route('admin.review-verifications.evidence', $verification) }}" class="mt-3 inline-block text-sm font-bold text-amber-700 hover:underline">Download evidence</a>
-                    <form method="POST" action="{{ route('admin.review-verifications.decide', $verification) }}" class="mt-4 flex gap-2">
-                        @csrf
-                        <button name="decision" value="approved" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Approve</button>
-                        <button name="decision" value="rejected" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white">Reject</button>
-                    </form>
+                    @if ($verification->canBeReviewedBy(auth()->user()))
+                        <p class="mt-1 text-sm text-slate-600">Customer: {{ $verification->user->name }} ({{ $verification->user->email }})</p>
+                        <p class="mt-1 break-all text-sm text-slate-600">Reference: {{ $verification->transaction_reference }}</p>
+                        <a href="{{ route('admin.review-verifications.evidence', $verification) }}" class="mt-3 inline-block text-sm font-bold text-amber-700 hover:underline">Download evidence</a>
+                        <form method="POST" action="{{ route('admin.review-verifications.decide', $verification) }}" class="mt-4 flex gap-2">
+                            @csrf
+                            <button name="decision" value="approved" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Approve</button>
+                            <button name="decision" value="rejected" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white">Reject</button>
+                        </form>
+                    @else
+                        <p class="mt-3 text-sm font-semibold text-amber-700">Another admin must review this request. You submitted it or own the business, so you cannot view its evidence or approve or reject it.</p>
+                    @endif
                 </article>
             @empty
                 <p class="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">No pending verification requests.</p>

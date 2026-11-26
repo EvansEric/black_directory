@@ -39,4 +39,11 @@ class ReviewVerification extends Model
     {
         return $this->hasOne(BusinessReview::class);
     }
+
+    public function canBeReviewedBy(User $user): bool
+    {
+        return $user->is_admin
+            && $this->user_id !== $user->id
+            && $this->business->user_id !== $user->id;
+    }
 }

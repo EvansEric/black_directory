@@ -12,12 +12,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ReviewVerificationController extends Controller
 {
-    public function index(Request $request): View
+    public function index(): View
     {
         return view('admin.review-verifications.index', [
             'verifications' => ReviewVerification::query()->where('status', 'pending')
-                ->where('user_id', '!=', $request->user()->id)
-                ->whereHas('business', fn ($query) => $query->where('user_id', '!=', $request->user()->id))
                 ->select(['id', 'business_id', 'user_id', 'status', 'transaction_reference', 'created_at'])
                 ->with(['business', 'user'])->oldest()->orderBy('id')->paginate(15),
         ]);
@@ -66,8 +64,8 @@ class ReviewVerificationController extends Controller
 
     private function authorizeDecision(Request $request, ReviewVerification $verification): void
     {
-        abort_if(
-            $verification->user_id === $request->user()->id || $verification->business->user_id === $request->user()->id,
+        abort_unless(
+            $verification->canBeReviewedBy($request->user()),
             403,
             'Another admin must review this request.',
         );

@@ -225,7 +225,7 @@ it('blocks owner reviews, unverified businesses, and customers without verified 
     $this->post(route('reviews.store', $business))->assertNotFound();
 });
 
-it('prevents admins from seeing or deciding their own or their business evidence', function (bool $ownsBusiness) {
+it('shows conflicted pending requests but prevents admins from viewing evidence or deciding them', function (bool $ownsBusiness) {
     $admin = User::factory()->create(['is_admin' => true]);
     $business = reviewBusiness($ownsBusiness ? $admin : null);
     $verification = ReviewVerification::create([
@@ -237,10 +237,21 @@ it('prevents admins from seeing or deciding their own or their business evidence
     ]);
 
     $this->actingAs($admin)->get(route('admin.review-verifications.index'))
-        ->assertOk()->assertDontSee('CONFLICT-1');
+        ->assertOk()
+        ->assertSee($business->name)
+        ->assertSee('Another admin must review this request.')
+        ->assertDontSee('No pending verification requests.')
+        ->assertDontSee('CONFLICT-1')
+        ->assertDontSee('Download evidence')
+        ->assertDontSee('Approve')
+        ->assertDontSee('Reject');
     $this->get(route('admin.review-verifications.evidence', $verification))->assertForbidden();
     $this->post(route('admin.review-verifications.decide', $verification), ['decision' => 'approved'])->assertForbidden();
     expect($verification->fresh()->status)->toBe('pending');
+
+    $otherAdmin = User::factory()->create(['is_admin' => true]);
+    $this->actingAs($otherAdmin)->get(route('admin.review-verifications.index'))
+        ->assertOk()->assertSee('CONFLICT-1')->assertSee('Download evidence')->assertSee('Approve');
 })->with([true, false]);
 
 it('only accepts an approved purchase owned by the reviewer for the same business', function () {

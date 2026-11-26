@@ -102,6 +102,14 @@ it('publishes linked business profiles with accurate structured data and no fabr
         ->assertSee('<title>Reviews for '.$business->name.' | Noir Directory</title>', false);
 });
 
+it('includes suite details in the structured business address', function () {
+    $business = seoBusiness(['address_unit' => 'Suite 200']);
+    $response = $this->get(route('businesses.show', $business))->assertOk();
+    $schema = collect(seoGraph($response->getContent()))->firstWhere('@type', 'LocalBusiness');
+
+    expect($schema['address']['streetAddress'])->toBe('12 Main St, Suite 200');
+});
+
 it('does not publish unverified profiles even to their owners', function () {
     $business = seoBusiness(['is_verified' => false]);
 

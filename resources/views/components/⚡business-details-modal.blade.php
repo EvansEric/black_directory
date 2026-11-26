@@ -84,7 +84,7 @@ new class extends Component
                     <ul class="space-y-2 text-sm text-slate-600">
                         <li class="flex items-start gap-2">
                             <i class="fa-solid fa-location-dot mt-1 text-amber-600"></i>
-                            <span>{{ collect([$business->address, $business->location, $business->zip])->filter()->implode(', ') }}</span>
+                            <span>{{ collect([$business->streetAddress(), $business->location, $business->zip])->filter()->implode(', ') }}</span>
                         </li>
                         @if ($business->free_parking !== null && $business->category === 'Dining & Food')
                             <li class="flex items-center gap-2">

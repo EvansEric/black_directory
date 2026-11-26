@@ -36,7 +36,7 @@ class GoogleMapsEmbed
     private function query(Business $business): string
     {
         $parts = filled($business->address)
-            ? [$business->address, $business->location, $business->zip]
+            ? [$business->streetAddress(), $business->location, $business->zip]
             : [$business->name, $business->location, $business->zip];
 
         return implode(', ', array_filter(array_map('trim', array_map('strval', $parts))));

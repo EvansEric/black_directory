@@ -91,7 +91,7 @@ class SeoMetadata
 
         $address = array_filter([
             '@type' => 'PostalAddress',
-            'streetAddress' => $business->address,
+            'streetAddress' => $business->streetAddress(),
             'addressLocality' => $business->city,
             'addressRegion' => $business->state,
             'postalCode' => $business->zip,

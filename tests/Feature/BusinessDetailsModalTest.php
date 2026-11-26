@@ -35,6 +35,19 @@ it('shows business info and a map pin when a listing is opened', function () {
         ->assertSee('Open in Google Maps');
 });
 
+it('shows suite or apartment details in listings and map links', function () {
+    $business = makeBusiness(['address_unit' => 'Suite 200']);
+
+    Livewire::test('business-list')->assertSee('12 Main St, Suite 200');
+    Livewire::test('business-details-modal')->call('open', $business->id)
+        ->assertSee('12 Main St, Suite 200')
+        ->assertSee('Suite+200', false);
+    $this->get(route('businesses.show', $business))
+        ->assertOk()->assertSee('12 Main St, Suite 200');
+
+    expect((new GoogleMapsEmbed(null))->directionsUrl($business))->toContain('Suite+200');
+});
+
 it('falls back to a keyless embed when no API key is configured', function () {
     $business = makeBusiness();
 

@@ -24,6 +24,7 @@ class Business extends Model
         'city',
         'state',
         'address',
+        'address_unit',
         'zip',
         'latitude',
         'longitude',
@@ -88,6 +89,16 @@ class Business extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(BusinessReview::class);
+    }
+
+    public function streetAddress(): ?string
+    {
+        $address = collect([$this->address, $this->address_unit])
+            ->filter(fn ($part) => filled($part))
+            ->map(fn (string $part): string => trim($part))
+            ->implode(', ');
+
+        return $address !== '' ? $address : null;
     }
 
     /** @return HasMany<ReviewVerification, $this> */

@@ -45,7 +45,7 @@
 
                         <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                             <div><dt class="font-semibold text-slate-700">Owner</dt><dd class="break-words text-slate-600">{{ $business->user->name }} ({{ $business->user->email }})</dd></div>
-                            <div><dt class="font-semibold text-slate-700">Address</dt><dd class="break-words text-slate-600">{{ collect([$business->address, $business->location, $business->zip])->filter()->implode(', ') }}</dd></div>
+                            <div><dt class="font-semibold text-slate-700">Address</dt><dd class="break-words text-slate-600">{{ collect([$business->streetAddress(), $business->location, $business->zip])->filter()->implode(', ') }}</dd></div>
                             @if ($business->phone)
                                 <div><dt class="font-semibold text-slate-700">Phone</dt><dd class="text-slate-600">{{ $business->phone }}</dd></div>
                             @endif

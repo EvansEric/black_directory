@@ -105,6 +105,63 @@ it('applies an autocomplete address and saves its coordinates without geocoding'
         ->longitude->toBe(-84.39);
 });
 
+it('saves a suite or apartment added after selecting an address', function () {
+    $owner = User::factory()->create();
+    $this->mock(Geocoder::class)->shouldNotReceive('geocodeListingAddress');
+
+    Livewire::actingAs($owner)->test('add-business-modal')
+        ->assertSee('Suite or Apartment (optional)')
+        ->set('name', 'Suite Shop')
+        ->set('description', 'A local shop.')
+        ->call('setAddressFromAutocomplete', '123 Peachtree St NE', 'Atlanta', 'GA', '30303', 33.755, -84.390)
+        ->set('addressUnit', 'Suite 200')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertSet('addressUnit', '');
+
+    $business = Business::where('name', 'Suite Shop')->firstOrFail();
+    expect($business->address)->toBe('123 Peachtree St NE')
+        ->and($business->address_unit)->toBe('Suite 200')
+        ->and($business->latitude)->toBe(33.755)
+        ->and($business->longitude)->toBe(-84.39);
+
+    Livewire::actingAs($owner)->test('add-business-modal')
+        ->call('editBusiness', $business->id)
+        ->assertSet('addressUnit', 'Suite 200')
+        ->set('addressUnit', 'Apt 3')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($business->fresh()->address_unit)->toBe('Apt 3')
+        ->and($business->fresh()->latitude)->toBe(33.755);
+});
+
+it('requires a street address when a suite or apartment is provided', function () {
+    Livewire::actingAs(User::factory()->create())->test('add-business-modal')
+        ->set('name', 'Suite Shop')
+        ->set('city', 'Atlanta')
+        ->set('state', 'GA')
+        ->set('description', 'A local shop.')
+        ->set('addressUnit', 'Suite 200')
+        ->call('save')
+        ->assertHasErrors(['address' => 'required_with']);
+});
+
+it('leaves existing combined addresses unchanged when editing', function () {
+    $owner = User::factory()->create();
+    $business = businessFor($owner, ['address' => '123 Main St, Suite 200']);
+
+    Livewire::actingAs($owner)->test('add-business-modal')
+        ->call('editBusiness', $business->id)
+        ->assertSet('address', '123 Main St, Suite 200')
+        ->assertSet('addressUnit', '')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($business->fresh()->address)->toBe('123 Main St, Suite 200')
+        ->and($business->fresh()->address_unit)->toBeNull();
+});
+
 it('uses the existing address autocomplete flow while editing a listing', function () {
     $owner = User::factory()->create();
     $business = businessFor($owner);

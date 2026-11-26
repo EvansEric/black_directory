@@ -27,7 +27,7 @@
 
             <h2 class="mt-8 text-xl font-bold text-slate-900">Location &amp; contact</h2>
             <address class="mt-3 not-italic text-slate-600">
-                {{ collect([$business->address, $business->location, $business->zip])->filter()->implode(', ') }}
+                {{ collect([$business->streetAddress(), $business->location, $business->zip])->filter()->implode(', ') }}
             </address>
             @if ($business->phone)
                 <p class="mt-3"><a href="tel:{{ $business->phone }}" class="font-semibold text-amber-700 hover:underline">{{ $business->phone }}</a></p>

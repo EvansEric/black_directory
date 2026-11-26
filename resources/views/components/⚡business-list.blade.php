@@ -105,6 +105,7 @@ new class extends Component
             $query->where(function ($q) use ($term, $raw, $city) {
                 $q->where('location', 'like', $term)
                     ->orWhere('address', 'like', $term)
+                    ->orWhere('address_unit', 'like', $term)
                     ->orWhere('zip', $raw);
 
                 if ($city) {
@@ -562,7 +563,7 @@ new class extends Component
 
                             @if ($business->address)
                                 <a
-                                    href="https://www.google.com/maps/search/?api=1&query={{ urlencode(trim($business->address . ', ' . $business->location . ' ' . $business->zip)) }}"
+                                    href="https://www.google.com/maps/search/?api=1&query={{ urlencode(trim($business->streetAddress() . ', ' . $business->location . ' ' . $business->zip)) }}"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     @click.stop
@@ -570,7 +571,7 @@ new class extends Component
                                     title="Open in Google Maps"
                                 >
                                     <i class="fa-solid fa-location-dot text-amber-600 mt-0.5"></i>
-                                    <span class="underline decoration-dotted underline-offset-2">{{ $business->address }}</span>
+                                    <span class="underline decoration-dotted underline-offset-2">{{ $business->streetAddress() }}</span>
                                 </a>
                             @endif
 

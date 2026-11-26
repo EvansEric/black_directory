@@ -21,6 +21,7 @@ new class extends Component
     public string $city = '';
     public string $state = '';
     public string $address = '';
+    public string $addressUnit = '';
     public string $zip = '';
     public string $phone = '';
     public string $website = '';
@@ -45,7 +46,8 @@ new class extends Component
             'category' => ['required', 'string'],
             'city' => ['required', 'string', 'max:100'],
             'state' => ['required', 'string', 'size:2', 'alpha'],
-            'address' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'required_with:addressUnit', 'string', 'max:255'],
+            'addressUnit' => ['nullable', 'string', 'max:100'],
             'zip' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
             'website' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
@@ -91,6 +93,8 @@ new class extends Component
 
         $data = $this->validate();
         $data['state'] = strtoupper($data['state']);
+        $data['address_unit'] = filled($data['addressUnit'] ?? null) ? trim($data['addressUnit']) : null;
+        unset($data['addressUnit']);
         $data['custom_slug'] = filled($data['customSlug'] ?? null) ? strtolower(trim($data['customSlug'])) : null;
         unset($data['customSlug']);
         foreach ([
@@ -222,6 +226,7 @@ new class extends Component
         $this->city = $business->city ?? $fallbackCity;
         $this->state = $business->state ?? strtoupper(substr($fallbackState, 0, 2));
         $this->address = $business->address ?? '';
+        $this->addressUnit = $business->address_unit ?? '';
         $this->zip = $business->zip ?? '';
         $this->phone = $business->phone ?? '';
         $this->website = $business->website ?? '';
@@ -267,7 +272,7 @@ new class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['name', 'city', 'state', 'address', 'zip', 'phone', 'website', 'facebookUrl', 'instagramUrl', 'xUrl', 'tiktokUrl', 'customSlug', 'tags', 'freeParking', 'insuranceTypes', 'image', 'description', 'latitude', 'longitude', 'editingBusinessId']);
+        $this->reset(['name', 'city', 'state', 'address', 'addressUnit', 'zip', 'phone', 'website', 'facebookUrl', 'instagramUrl', 'xUrl', 'tiktokUrl', 'customSlug', 'tags', 'freeParking', 'insuranceTypes', 'image', 'description', 'latitude', 'longitude', 'editingBusinessId']);
         $this->category = 'Dining & Food';
         $this->resetValidation();
     }
@@ -572,9 +577,9 @@ new class extends Component
                 data-details-url="{{ route('places.show', ['place' => '__PLACE__']) }}"
                 class="relative"
             >
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Street Address</label>
-                <input x-ref="address" type="text" wire:model="address" @input.debounce.300ms="clearCoordinates()" placeholder="Start typing a street address"
-                       autocomplete="street-address" aria-describedby="address-autocomplete-help"
+                <label for="business-address" class="block text-xs font-semibold text-slate-700 mb-1">Street Address</label>
+                <input id="business-address" x-ref="address" type="text" wire:model="address" @input.debounce.300ms="clearCoordinates()" placeholder="Start typing a street address"
+                       autocomplete="address-line1" aria-describedby="address-autocomplete-help"
                        @input="search($event.target.value)"
                        @keydown.down.prevent="move(1)"
                        @keydown.up.prevent="move(-1)"
@@ -609,6 +614,13 @@ new class extends Component
                     <p class="border-t border-slate-100 px-3.5 py-2 text-right text-[10px] font-semibold text-slate-400">Powered by Google</p>
                 </div>
                 @error('address') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="business-address-unit" class="block text-xs font-semibold text-slate-700 mb-1">Suite or Apartment (optional)</label>
+                <input id="business-address-unit" type="text" wire:model="addressUnit" autocomplete="address-line2" maxlength="100" placeholder="e.g. Suite 200 or Apt 3"
+                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                @error('addressUnit') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
